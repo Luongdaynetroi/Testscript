@@ -1,21 +1,740 @@
-local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-function base64_decode(data)
-    data = string.gsub(data, '[^'..b..'=]', '')
-    return (data:gsub('.', function(x)
-        if (x == '=') then return '' end
-        local r,f='',(b:find(x)-1)
-        for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end
-        return r;
-    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
-        if (#x ~= 8) then return '' end
-        local c=0
-        for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end
-        return string.char(c)
-    end))
+-- LVM Ultimate v3.8 — Stealth Edition
+-- Changelog:
+--  - ESP: filter hiển thị (dot/highlight/billboard) theo MAX_DIST
+--  - Speed: thêm chế độ STEALTH_SPEED (apply via RootPart velocity) + giữ ORIGINAL_SPEED on join
+--  - Cleanup: chắc cú hơn, ensure PlayerRemoving handled, cleanup conns
+--  - GUI persistence: debounce ensure loop so nó không spawn đôi
+--  - Small fixes/comments
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+
+-- ===== Config =====
+local UI_NAME = "LVM_Ultimate_v3_8"
+local CHECK_GUI_INTERVAL = 1
+local DEFAULT_MAX_DIST = 120
+local DEFAULT_SPEED = 16
+local TELEPORT_FORWARD_DIST = 3
+local TELEPORT_UP_OFFSET = 3
+local GUI_RECREATE_DEBOUNCE = 0.6
+
+-- ===== State =====
+local screenGui = nil
+local guiConns = {}
+local UI = {}
+local espData = {}   -- player -> { labelInList, billboard, dot, highlight, charConn }
+local genData = {}   -- genModel -> { highlight }
+local playerList = {}
+local currentPlayerIndex = 1
+local genList = {}
+local currentGenIndex = 1
+local ESP_ENABLED = true
+local MAX_DIST = DEFAULT_MAX_DIST
+local SPEED_ENABLED = false
+local APPLIED_SPEED = DEFAULT_SPEED
+local ORIGINAL_SPEED = nil
+local STEALTH_SPEED = false -- nếu true thì dùng RootPart velocity thay vì set WalkSpeed
+local lastGuiEnsure = 0
+
+-- ===== Helpers =====
+local function safePcall(fn) local ok, res = pcall(fn) if not ok then warn("LVM_SAFE_PCALL:", res) end return ok, res end
+local function safeParent(inst, parent) pcall(function() inst.Parent = parent end) end
+
+local function tryGetGuiParent()
+    if LocalPlayer then
+        local ok, pg = pcall(function() return LocalPlayer:FindFirstChild("PlayerGui") end)
+        if ok and pg then return pg end
+        local ok2, pg2 = pcall(function() return LocalPlayer:WaitForChild("PlayerGui", 2) end)
+        if ok2 and pg2 then return pg2 end
+    end
+    return CoreGui
 end
 
-local encoded = [[
-bG9jYWwgYj0nDQppZiBub3QgX0cuSWdub3JlIHRoZW4gX0cuSWdub3JlID0ge30gZW5kDQppZiBfRy5TZW5kTm90aWZpY2F0aW9ucyA9PSBuaWwgdGhlbiBfRy5TZW5kTm90aWZpY2F0aW9ucyA9IHRydWUgZW5kDQppZiBfRy5Db25zb2xlTG9ncyA9PSBuaWwgdGhlbiBfRy5Db25zb2xlTG9ncyA9IGZhbHNlIGVuZA0KDQotLSBEZWZhdWx0IFNldHRpbmdzDQppZiBub3QgX0cuU2V0dGluZ3MgdGhlbg0KICAgIF9HLlNldHRpbmdzID0gew0KICAgICAgICBQbGF5ZXJzID0ge1siSWdub3JlIE1lIl0gPSB0cnVlLCBbIklnbm9yZSBPdGhlcnMiXSA9IHRydWUsIFsiSWdub3JlIFRvb2xzIl0gPSB0cnVlfSwNCiAgICAgICAgTWVzaGVzID0ge05vTWVzaCA9IGZhbHNlLCBOb1RleHR1cmUgPSBmYWxzZSwgRGVzdHJveSA9IGZhbHNlfSwNCiAgICAgICAgSW1hZ2VzID0ge0ludmlzaWJsZSA9IHRydWUsIERlc3Ryb3kgPSBmYWxzZX0sDQogICAgICAgIEV4cGxvc2lvbnMgPSB7U21hbGxlciA9IHRydWUsIEludmlzaWJsZSA9IGZhbHNlLCBEZXN0cm95ID0gZmFsc2V9LA0KICAgICAgICBQYXJ0aWNsZXMgPSB7SW52aXNpYmxlID0gdHJ1ZSwgRGVzdHJveSA9IGZhbHNlfSwNCiAgICAgICAgVGV4dExhYmVscyA9IHtMb3dlclF1YWxpdHkgPSBmYWxzZSwgSW52aXNpYmxlID0gZmFsc2UsIERlc3Ryb3kgPSBmYWxzZX0sDQogICAgICAgIE1lc2hQYXJ0cyA9IHtMb3dlclF1YWxpdHkgPSB0cnVlLCBJbnZpc2libGUgPSBmYWxzZSwgTm9UZXh0dXJlID0gZmFsc2UsIE5vTWVzaCA9IGZhbHNlLCBEZXN0cm95ID0gZmFsc2V9LA0KICAgICAgICBPdGhlciA9IHsNCiAgICAgICAgICAgIFsiRlBTIENhcCJdID0gMTIwLA0KICAgICAgICAgICAgWyJObyBDYW1lcmEgRWZmZWN0cyJdID0gdHJ1ZSwNCiAgICAgICAgICAgIFsiTm8gQ2xvdGhlcyJdID0gdHJ1ZSwNCiAgICAgICAgICAgIFsiTG93IFdhdGVyIEdyYXBoaWNzIl0gPSB0cnVlLA0KICAgICAgICAgICAgWyJObyBTaGFkb3dzIl0gPSB0cnVlLA0KICAgICAgICAgICAgWyJMb3cgUmVuZGVyaW5nIl0gPSB0cnVlLA0KICAgICAgICAgICAgWyJMb3cgUXVhbGl0eSBQYXJ0cyJdID0gdHJ1ZSwNCiAgICAgICAgICAgIFsiTG93IFF1YWxpdHkgTW9kZWxzIl0gPSB0cnVlLA0KICAgICAgICAgICAgWyJSZXNldCBNYXRlcmlhbHMiXSA9IHRydWUsDQogICAgICAgICAgICBbIkxvd2VyIFF1YWxpdHkgTWVzaFBhcnRzIl0gPSB0cnVlLA0KICAgICAgICAgICAgQ2xlYXJOaWxJbnN0YW5jZXMgPSBmYWxzZSwNCiAgICAgICAgICAgIFsiU2tpbGwgRWZmZWN0IFJlZHVjdGlvbiJdID0gdHJ1ZQ0KICAgICAgICB9DQogICAgfQ0KZW5kDQoNCi0tIFNlcnZpY2VzDQpsb2NhbCBQbGF5ZXJzLCBMaWdodGluZywgU3RhcnRlckd1aSwgTWF0ZXJpYWxTZXJ2aWNlID0NCiAgICBnYW1lOkdldFNlcnZpY2UoIlBsYXllcnMiKSwNCiAgICBnYW1lOkdldFNlcnZpY2UoIkxpZ2h0aW5nIiksDQogICAgZ2FtZTpHZXRTZXJ2aWNlKCJTdGFydGVyR3VpIiksDQogICAgZ2FtZTpHZXRTZXJ2aWNlKCJNYXRlcmlhbFNlcnZpY2UiKQ0KbG9jYWwgTUUgPSBQbGF5ZXJzLkxvY2FsUGxheWVyDQpsb2NhbCBDYW5CZUVuYWJsZWQgPSB7IlBhcnRpY2xlRW1pdHRlciIsIlRyYWlsIiwiU21va2UiLCJGaXJlIiwiU3BhcmtsZXMifQ0KDQotLSBIZWxwZXJzDQpsb2NhbCBmdW5jdGlvbiBOb3RpZnkodGl0bGUsIHRleHQsIGR1cmF0aW9uKQ0KICAgIGlmIF9HLlNlbmROb3RpZmljYXRpb25zIHRoZW4NCiAgICAgICAgcGNhbGwoZnVuY3Rpb24oKQ0KICAgICAgICAgICAgU3RhcnRlckd1aTpTZXRDb3JlKCJTZW5kTm90aWZpY2F0aW9uIiwge1RpdGxlID0gIkR1Y0x1b25nZyBGaXhMYWfihKIiLCBUZXh0ID0gdGV4dCBvciAiIiwgRHVyYXRpb24gPSBkdXJhdGlvbiBvciA1fSkNCiAgICAgICAgZW5kKQ0KICAgIGVuZA0KICAgIGlmIF9HLkNvbnNvbGVMb2dzIHRoZW4gd2Fybih0ZXh0KSBlbmQNCmVuZA0KDQotLSBNYWluIGNoZWNrIGxvZ2ljDQpsb2NhbCBmdW5jdGlvbiBDaGVja0lmQmFkKEluc3QpDQogICAgaWYgSW5zdDpJc0EoIkRhdGFNb2RlbE1lc2giKSB0aGVuDQogICAgICAgIGlmIEluc3Q6SXNBKCJTcGVjaWFsTWVzaCIpIHRoZW4NCiAgICAgICAgICAgIGlmIF9HLlNldHRpbmdzLk1lc2hlcy5Ob01lc2ggdGhlbiBJbnN0Lk1lc2hJZCA9ICIiIGVuZA0KICAgICAgICAgICAgaWYgX0cuU2V0dGluZ3MuTWVzaGVzLk5vVGV4dHVyZSB0aGVuIEluc3QuVGV4dHVyZUlkID0gIiIgZW5kDQogICAgICAgIGVuZA0KICAgICAgICBpZiBfRy5TZXR0aW5ncy5NZXNoZXMuRGVzdHJveSB0aGVuIEluc3Q6RGVzdHJveSgpDQogICAgICAgIGVuZA0KICAgIGVsc2VpZiBJbnN0OklzQSgiRmFjZUluc3RhbmNlIikgdGhlbg0KICAgICAgICBpZiBfRy5TZXR0aW5ncy5JbWFnZXMuSW52aXNpYmxlIHRoZW4gSW5zdC5UcmFuc3BhcmVuY3kgPSAxIGVuZA0KICAgICAgICBpZiBfRy5TZXR0aW5ncy5JbWFnZXMuRGVzdHJveSB0aGVuIEluc3Q6RGVzdHJveSgpDQogICAgICAgIGVuZA0KICAgIGVsc2VpZiB0YWJsZS5maW5kKENhbkJlRW5hYmxlZCwgSW5zdC5DbGFzc05hbWUpIHRoZW4NCiAgICAgICAgaWYgX0cuU2V0dGluZ3MuUGFydGljbGVzLkludmlzaWJsZSB0aGVuIEluc3QuRW5hYmxlZCA9IGZhbHNlIGVuZA0KICAgICAgICBpZiBfRy5TZXR0aW5ncy5QYXJ0aWNsZXMuRGVzdHJveSB0aGVuIEluc3Q6RGVzdHJveSgpIGVuZA0KICAgIGVsc2VpZiBJbnN0OklzQSgiUG9zdEVmZmVjdCIpIGFuZCBfRy5TZXR0aW5ncy5PdGhlclsiTm8gQ2FtZXJhIEVmZmVjdHMiXSB0aGVuDQogICAgICAgIEluc3QuRW5hYmxlZCA9IGZhbHNlDQogICAgZWxzZWlmIEluc3Q6SXNBKCJFeHBsb3Npb24iKSB0aGVuDQogICAgICAgIGlmIF9HLlNldHRpbmdzLkV4cGxvc2lvbnMuU21hbGxlciB0aGVuIEluc3QuQmxhc3RQcmVzc3VyZSA9IDE7IEluc3QuQmxhc3RSYWRpdXMgPSAxIGVuZA0KICAgICAgICBpZiBfRy5TZXR0aW5ncy5FeHBsb3Npb25zLkludmlzaWJsZSB0aGVuIEluc3QuVmlzaWJsZSA9IGZhbHNlIGVuZA0KICAgICAgICBpZiBfRy5TZXR0aW5ncy5FeHBsb3Npb25zLkRlc3Ryb3kgdGhlbiBJbnN0OkRlc3Ryb3koKSBlbmQNCiAgICBlbHNlaWYgSW5zdDpJc0EoIkNsb3RoaW5nIikgb3IgSW5zdDpJc0EoIlN1cmZhY2VBcHBlYXJhbmNlIikgdGhlbg0KICAgICAgICBpZiBfRy5TZXR0aW5ncy5PdGhlclsiTm8gQ2xvdGhlcyJdIHRoZW4gSW5zdDpEZXN0cm95KCkgZW5kDQogICAgZWxzZWlmIEluc3Q6SXNBKCJCYXNlUGFydCIpIGFuZCBub3QgSW5zdDpJc0EoIk1lc2hQYXJ0IikgdGhlbg0KICAgICAgICBpZiBfRy5TZXR0aW5ncy5PdGhlclsiTG93IFF1YWxpdHkgUGFydHMiXSB0aGVuDQogICAgICAgICAgICBJbnN0Lk1hdGVyaWFsID0gRW51bS5NYXRlcmlhbC5QbGFzdGljDQogICAgICAgICAgICBJbnN0LlJlZmxlY3RhbmNlID0gMA0KICAgICAgICBlbmQNCiAgICBlbHNlaWYgSW5zdDpJc0EoIk1lc2hQYXJ0IikgdGhlbg0KICAgICAgICBpZiBfRy5TZXR0aW5ncy5NZXNoUGFydHMuTG93ZXJRdWFsaXR5IHRoZW4gSW5zdC5SZW5kZXJGaWRlbGl0eSA9IEVudW0uUmVuZGVyRmlkZWxpdHkuUGVyZm9ybWFuY2U7IEluc3QuTWF0ZXJpYWwgPSBFbnVtLk1hdGVyaWFsLlBsYXN0aWMgZW5kDQogICAgICAgIGlmIF9HLlNldHRpbmdzLk1lc2hQYXJ0cy5JbnZpc2libGUgdGhlbiBJbnN0LlRyYW5zcGFyZW5jeSA9IDEgZW5kDQogICAgICAgIGlmIF9HLlNldHRpbmdzLk1lc2hQYXJ0cy5Ob1RleHR1cmUgdGhlbiBJbnN0LlRleHR1cmVJRCA9ICIiIGVuZA0KICAgICAgICBpZiBfRy5TZXR0aW5ncy5NZXNoUGFydHMuTm9NZXNoIHRoZW4gSW5zdC5NZXNoSWQgPSAiIiBlbmQNCiAgICAgICAgaWYgX0cuU2V0dGluZ3MuTWVzaFBhcnRzLkRlc3Ryb3kgdGhlbiBJbnN0OkRlc3Ryb3koKSBlbmQNCiAgICBlbmQNCmVuZA0KDQotLSBXYXRlcg0KY29yb3V0aW5lLndyYXAoZnVuY3Rpb24oKQ0KICAgIGlmIF9HLlNldHRpbmdzLk90aGVyWyJMb3cgV2F0ZXIgR3JhcGhpY3MiXSB0aGVuDQogICAgICAgIGxvY2FsIHRlcnJhaW4gPSB3b3Jrc3BhY2U6RmluZEZpcnN0Q2hpbGRPZkNsYXNzKCJUZXJyYWluIikNCiAgICAgICAgaWYgdGVycmFpbiB0aGVuDQogICAgICAgICAgICB0ZXJyYWluLldhdGVyV2F2ZVNpemUgPSAwDQogICAgICAgICAgICB0ZXJyYWluLldhdGVyV2F2ZVNwZWVkID0gMA0KICAgICAgICAgICAgdGVycmFpbi5XYXRlclJlZmxlY3RhbmNlID0gMA0KICAgICAgICAgICAgdGVycmFpbi5XYXRlclRyYW5zcGFyZW5jeSA9IDANCiAgICAgICAgZW5kDQogICAgICAgIE5vdGlmeSgiRHVjTHVvbmdnIEZpeExhZ+KEoiIsICJza2liaWRpIikNCiAgICBlbmQNCmVuZCkoKQ0KDQotLSBTaGFkb3dzDQpjb3JvdXRpbmUud3JhcChmdW5jdGlvbigpDQogICAgaWYgX0cuU2V0dGluZ3MuT3RoZXJbIk5vIFNoYWRvd3MiXSB0aGVuDQogICAgICAgIExpZ2h0aW5nLkdsb2JhbFNoYWRvd3MgPSBmYWxzZQ0KICAgICAgICBMaWdodGluZy5Gb2dFbmQgPSA5ZTkNCiAgICAgICAgTGlnaHRpbmcuU2hhZG93U29mdG5lc3MgPSAwDQogICAgICAgIE5vdGlmeSgidMO0aSBi4buLIG5ndeKEoiIsICJ0w7RpIGtow7RuZyBuZ3UiKQ0KICAgIGVuZA0KZW5kKSgpDQoNCi0tIFJlbmRlcmluZw0KY29yb3V0aW5lLndyYXAoZnVuY3Rpb24oKQ0KICAgIGlmIF9HLlNldHRpbmdzLk90aGVyWyJMb3cgUmVuZGVyaW5nIl0gdGhlbg0KICAgICAgICBzZXR0aW5ncygpLlJlbmRlcmluZy5RdWFsaXR5TGV2ZWwgPSBFbnVtLlF1YWxpdHlMZXZlbC5MZXZlbDAxDQogICAgICAgIE5vdGlmeSgibeG7mXQgY8OhaSBjaOG6v3QgdHJ1eeG7gW4gdGjDtG5n4oSiIiwgImPDoWMgYuG6oW4gY8OzIHRo4bqleSBy4bqldCBwaGnhu4FuIGtow7RuZyIpDQogICAgZW5kDQplbmQpKCkNCg0KLS0gTWF0ZXJpYWxzDQpjb3JvdXRpbmUud3JhcChmdW5jdGlvbigpDQogICAgaWYgX0cuU2V0dGluZ3MuT3RoZXJbIlJlc2V0IE1hdGVyaWFscyJdIHRoZW4NCiAgICAgICAgZm9yIF8sIHYgaW4gcGFpcnMoTWF0ZXJpYWxTZXJ2aWNlOkdldENoaWxkcmVuKCkpIGRvIHY6RGVzdHJveSgpIGVuZA0KICAgICAgICBNYXRlcmlhbFNlcnZpY2UuVXNlMjAyMk1hdGVyaWFscyA9IGZhbHNlDQogICAgICAgIE5vdGlmeSgieGluIGzhu5dpIHbDrCBxdcOhIGR64oSiIiwgImPhuqNtIMahbiIpDQogICAgZW5kDQplbmQpKCkNCg0KLS0gRlBTIENhcA0KY29yb3V0aW5lLndyYXAoZnVuY3Rpb24oKQ0KICAgIGlmIF9HLlNldHRpbmdzLk90aGVyWyJGUFMgQ2FwIl0gYW5kIHNldGZwc2NhcCB0aGVuDQogICAgICAgIHNldGZwc2NhcChfRy5TZXR0aW5ncy5PdGhlclsiRlBTIENhcCJdKQ0KICAgICAgICBOb3RpZnkoInRo4bqvbmcgbmfhu4104oSiIiwgImvhurlvIGNvbiAiLi5fRy5TZXR0aW5ncy5PdGhlclsiRlBTIENhcCJdKQ0KICAgIGVuZA0KZW5kKSgpDQoNCi0tIFNraWxsIGVmZmVjdCByZWR1Y3Rpb24gKE9wdGltaXplZCkNCmlmIF9HLlNldHRpbmdzLk90aGVyWyJTa2lsbCBFZmZlY3QgUmVkdWN0aW9uIl0gdGhlbg0KICAgIGxvY2FsIGZ1bmN0aW9uIERpc2FibGVTa2lsbEVmZmVjdHMoaW5zdCkNCiAgICAgICAgaWYgaW5zdDpJc0EoIlBhcnRpY2xlRW1pdHRlciIpIG9yIGluc3Q6SXNBKCJUcmFpbCIpIG9yIGluc3Q6SXNBKCJGaXJlIikgb3IgaW5zdDpJc0EoIlNtb2tlIikgdGhlbg0KICAgICAgICAgICAgaW5zdC5FbmFibGVkID0gZmFsc2UNCiAgICAgICAgZWxzZWlmIGluc3Q6SXNBKCJFeHBsb3Npb24iKSB0aGVuDQogICAgICAgICAgICBpbnN0LkJsYXN0UHJlc3N1cmUgPSAwDQogICAgICAgICAgICBpbnN0LkJsYXN0UmFkaXVzID0gMA0KICAgICAgICAgICAgaW5zdC5WaXNpYmxlID0gZmFsc2UNCiAgICAgICAgZW5kDQogICAgZW5kDQogICAgLS0gQXBwbHkgdG8gZXhpc3RpbmcgYW5kIGZ1dHVyZSBpbnN0YW5jZXMNCiAgICBmb3IgXywgdiBpbiBwYWlycyh3b3Jrc3BhY2U6R2V0RGVzY2VuZGFudHMoKSkgZG8gRGlzYWJsZVNraWxsRWZmZWN0cyh2KSBlbmQNCiAgICB3b3Jrc3BhY2UuRGVzY2VuZGFudEFkZGVkOkNvbm5lY3QoRGlzYWJsZVNraWxsRWZmZWN0cykNCiAgICBOb3RpZnkoIlTDtGkgZmFuIG5n4buNdCIpDQplbmQNCg0KLS0gQXBwbHkgdG8gYWxsIGV4aXN0aW5nIGluc3RhbmNlcw0KZm9yIF8sIHYgaW4gcGFpcnMoZ2FtZTpHZXREZXNjZW5kYW50cygpKSBkbyBDaGVja0lmQmFkKHYpIGVuZA0KZ2FtZS5EZXNjZW5kYW50QWRkZWQ6Q29ubmVjdChmdW5jdGlvbih2KQ0KICAgIHRhc2sud2FpdCgwLjEpDQogICAgQ2hlY2tJZkJhZCh2KQ0KZW5kKQ0KDQpOb3RpZnkoIkR1Y0x1b25nZyBGaXhMYWfihKIiLCAiSG9hbiBIbyBCYW4gTmhhYyBUaHUgRG8iLCAxMCknDQpmdW5jdGlvbiBiYXNlNjRfZGVjb2RlKGRhdGEpDQogICAgZGF0YSA9IHN0cmluZy5nc3ViKGRhdGEsICdbXicuLmIuLic9XScsICcnKQ0KICAgIHJldHVybiAoZGF0YTpnc3ViKCcuJywgZnVuY3Rpb24oeCkNCiAgICAgICAgaWYgKHggPT0gJz0nKSB0aGVuIHJldHVybiAnJyBlbmQNCiAgICAgICAgbG9jYWwgcixmPScnLChiOmZpbmQoeCktMSkNCiAgICAgICAgZm9yIGk9NiwxLC0xIGRvIHI9ci4uKGYlMl5pLWYlMl4oaS0xKT4wIGFuZCAnMScgb3IgJzAnKSBlbmQNCiAgICAgICAgcmV0dXJuIHI7DQogICAgZW5kKTpnc3ViKCclZCVkJWQ/JWQ/JWQ/JWQ/JWQ/JWQ/JywgZnVuY3Rpb24oeCkNCiAgICAgICAgaWYgKCN4IH49IDgpIHRoZW4gcmV0dXJuICcnIGVuZA0KICAgICAgICBsb2NhbCBjPTANCiAgICAgICAgZm9yIGk9MSw4IGRvIGM9YysoeDpzdWIoaSxpKT09JzEnIGFuZCAyXig4LWkpIG9yIDApIGVuZA0KICAgICAgICByZXR1cm4gc3RyaW5nLmNoYXIoYykNCiAgICBlbmQpKQ0KZW5kDQoNCmxvY2FsIGVuY29kZWQgPSBbWw0KRFFwcFppQnViM1FnWDBjdVNXZHViM0psSUhSb1pXNGdYMGN1U1dkdWIzSmxJRDBnZTMwZ1pXNWtEUXBwWmlCZlJ5NVRaVzVrVG05MGFXWnBZMkYwYVc5dWN5QTlQU0J1YVd3Z2RHaGxiaUJmUnk1VFpXNWtUbTkwYVdacFkyRjBhVzl1Y3lBOUlIUnlkV1VnWlc1a0RRcHBaaUJmUnk1RGIyNXpiMnhsVEc5bmN5QTlQU0J1YVd3Z2RHaGxiaUJmUnk1RGIyNXpiMnhsVEc5bmN5QTlJR1poYkhObElHVnVaQTBLRFFvdExTQkVaV1poZFd4MElGTmxkSFJwYm1kekRRcHBaaUJ1YjNRZ1gwY3VVMlYwZEdsdVozTWdkR2hsYmcwS0lDQWdJRjlITGxObGRIUnBibWR6SUQwZ2V3MEtJQ0FnSUNBZ0lDQlFiR0Y1WlhKeklEMGdlMXNpU1dkdWIzSmxJRTFsSWwwZ1BTQjBjblZsTENCYklrbG5ibTl5WlNCUGRHaGxjbk1pWFNBOUlIUnlkV1VzSUZzaVNXZHViM0psSUZSdmIyeHpJbDBnUFNCMGNuVmxmU3dOQ2lBZ0lDQWdJQ0FnVFdWemFHVnpJRDBnZTA1dlRXVnphQ0E5SUdaaGJITmxMQ0JPYjFSbGVIUjFjbVVnUFNCbVlXeHpaU3dnUkdWemRISnZlU0E5SUdaaGJITmxmU3dOQ2lBZ0lDQWdJQ0FnU1cxaFoyVnpJRDBnZTBsdWRtbHphV0pzWlNBOUlIUnlkV1VzSUVSbGMzUnliM2tnUFNCbVlXeHpaWDBzRFFvZ0lDQWdJQ0FnSUVWNGNHeHZjMmx2Ym5NZ1BTQjdVMjFoYkd4bGNpQTlJSFJ5ZFdVc0lFbHVkbWx6YVdKc1pTQTlJR1poYkhObExDQkVaWE4wY205NUlEMGdabUZzYzJWOUxBMEtJQ0FnSUNBZ0lDQlFZWEowYVdOc1pYTWdQU0I3U1c1MmFYTnBZbXhsSUQwZ2RISjFaU3dnUkdWemRISnZlU0E5SUdaaGJITmxmU3dOQ2lBZ0lDQWdJQ0FnVkdWNGRFeGhZbVZzY3lBOUlIdE1iM2RsY2xGMVlXeHBkSGtnUFNCbVlXeHpaU3dnU1c1MmFYTnBZbXhsSUQwZ1ptRnNjMlVzSUVSbGMzUnliM2tnUFNCbVlXeHpaWDBzRFFvZ0lDQWdJQ0FnSUUxbGMyaFFZWEowY3lBOUlIdE1iM2RsY2xGMVlXeHBkSGtnUFNCMGNuVmxMQ0JKYm5acGMybGliR1VnUFNCbVlXeHpaU3dnVG05VVpYaDBkWEpsSUQwZ1ptRnNjMlVzSUU1dlRXVnphQ0E5SUdaaGJITmxMQ0JFWlhOMGNtOTVJRDBnWm1Gc2MyVjlMQTBLSUNBZ0lDQWdJQ0JQZEdobGNpQTlJSHNOQ2lBZ0lDQWdJQ0FnSUNBZ0lGc2lSbEJUSUVOaGNDSmRJRDBnTVRJd0xBMEtJQ0FnSUNBZ0lDQWdJQ0FnV3lKT2J5QkRZVzFsY21FZ1JXWm1aV04wY3lKZElEMGdkSEoxWlN3TkNpQWdJQ0FnSUNBZ0lDQWdJRnNpVG04Z1EyeHZkR2hsY3lKZElEMGdkSEoxWlN3TkNpQWdJQ0FnSUNBZ0lDQWdJRnNpVEc5M0lGZGhkR1Z5SUVkeVlYQm9hV056SWwwZ1BTQjBjblZsTEEwS0lDQWdJQ0FnSUNBZ0lDQWdXeUpPYnlCVGFHRmtiM2R6SWwwZ1BTQjBjblZsTEEwS0lDQWdJQ0FnSUNBZ0lDQWdXeUpNYjNjZ1VtVnVaR1Z5YVc1bklsMGdQU0IwY25WbExBMEtJQ0FnSUNBZ0lDQWdJQ0FnV3lKTWIzY2dVWFZoYkdsMGVTQlFZWEowY3lKZElEMGdkSEoxWlN3TkNpQWdJQ0FnSUNBZ0lDQWdJRnNpVEc5M0lGRjFZV3hwZEhrZ1RXOWtaV3h6SWwwZ1BTQjBjblZsTEEwS0lDQWdJQ0FnSUNBZ0lDQWdXeUpTWlhObGRDQk5ZWFJsY21saGJITWlYU0E5SUhSeWRXVXNEUW9nSUNBZ0lDQWdJQ0FnSUNCYklreHZkMlZ5SUZGMVlXeHBkSGtnVFdWemFGQmhjblJ6SWwwZ1BTQjBjblZsTEEwS0lDQWdJQ0FnSUNBZ0lDQWdRMnhsWVhKT2FXeEpibk4wWVc1alpYTWdQU0JtWVd4elpTd05DaUFnSUNBZ0lDQWdJQ0FnSUZzaVUydHBiR3dnUldabVpXTjBJRkpsWkhWamRHbHZiaUpkSUQwZ2RISjFaUTBLSUNBZ0lDQWdJQ0I5RFFvZ0lDQWdmUTBLWlc1a0RRb05DaTB0SUZObGNuWnBZMlZ6RFFwc2IyTmhiQ0JRYkdGNVpYSnpMQ0JNYVdkb2RHbHVaeXdnVTNSaGNuUmxja2QxYVN3Z1RXRjBaWEpwWVd4VFpYSjJhV05sSUQwTkNpQWdJQ0JuWVcxbE9rZGxkRk5sY25acFkyVW9JbEJzWVhsbGNuTWlLU3dOQ2lBZ0lDQm5ZVzFsT2tkbGRGTmxjblpwWTJVb0lreHBaMmgwYVc1bklpa3NEUW9nSUNBZ1oyRnRaVHBIWlhSVFpYSjJhV05sS0NKVGRHRnlkR1Z5UjNWcElpa3NEUW9nSUNBZ1oyRnRaVHBIWlhSVFpYSjJhV05sS0NKTllYUmxjbWxoYkZObGNuWnBZMlVpS1EwS2JHOWpZV3dnVFVVZ1BTQlFiR0Y1WlhKekxreHZZMkZzVUd4aGVXVnlEUXBzYjJOaGJDQkRZVzVDWlVWdVlXSnNaV1FnUFNCN0lsQmhjblJwWTJ4bFJXMXBkSFJsY2lJc0lsUnlZV2xzSWl3aVUyMXZhMlVpTENKR2FYSmxJaXdpVTNCaGNtdHNaWE1pZlEwS0RRb3RMU0JJWld4d1pYSnpEUXBzYjJOaGJDQm1kVzVqZEdsdmJpQk9iM1JwWm5rb2RHbDBiR1VzSUhSbGVIUXNJR1IxY21GMGFXOXVLUTBLSUNBZ0lHbG1JRjlITGxObGJtUk9iM1JwWm1sallYUnBiMjV6SUhSb1pXNE5DaUFnSUNBZ0lDQWdjR05oYkd3b1puVnVZM1JwYjI0b0tRMEtJQ0FnSUNBZ0lDQWdJQ0FnVTNSaGNuUmxja2QxYVRwVFpYUkRiM0psS0NKVFpXNWtUbTkwYVdacFkyRjBhVzl1SWl3Z2UxUnBkR3hsSUQwZ0lrUjFZMHgxYjI1blp5QkdhWGhNWVdmaWhLSWlMQ0JVWlhoMElEMGdkR1Y0ZENCdmNpQWlJaXdnUkhWeVlYUnBiMjRnUFNCa2RYSmhkR2x2YmlCdmNpQTFmU2tOQ2lBZ0lDQWdJQ0FnWlc1a0tRMEtJQ0FnSUdWdVpBMEtJQ0FnSUdsbUlGOUhMa052Ym5OdmJHVk1iMmR6SUhSb1pXNGdkMkZ5YmloMFpYaDBLU0JsYm1RTkNtVnVaQTBLRFFvdExTQk5ZV2x1SUdOb1pXTnJJR3h2WjJsakRRcHNiMk5oYkNCbWRXNWpkR2x2YmlCRGFHVmphMGxtUW1Ga0tFbHVjM1FwRFFvZ0lDQWdhV1lnU1c1emREcEpjMEVvSWtSaGRHRk5iMlJsYkUxbGMyZ2lLU0IwYUdWdURRb2dJQ0FnSUNBZ0lHbG1JRWx1YzNRNlNYTkJLQ0pUY0dWamFXRnNUV1Z6YUNJcElIUm9aVzROQ2lBZ0lDQWdJQ0FnSUNBZ0lHbG1JRjlITGxObGRIUnBibWR6TGsxbGMyaGxjeTVPYjAxbGMyZ2dkR2hsYmlCSmJuTjBMazFsYzJoSlpDQTlJQ0lpSUdWdVpBMEtJQ0FnSUNBZ0lDQWdJQ0FnYVdZZ1gwY3VVMlYwZEdsdVozTXVUV1Z6YUdWekxrNXZWR1Y0ZEhWeVpTQjBhR1Z1SUVsdWMzUXVWR1Y0ZEhWeVpVbGtJRDBnSWlJZ1pXNWtEUW9nSUNBZ0lDQWdJR1Z1WkEwS0lDQWdJQ0FnSUNCcFppQmZSeTVUWlhSMGFXNW5jeTVOWlhOb1pYTXVSR1Z6ZEhKdmVTQjBhR1Z1SUVsdWMzUTZSR1Z6ZEhKdmVTZ3BEUW9nSUNBZ0lDQWdJR1Z1WkEwS0lDQWdJR1ZzYzJWcFppQkpibk4wT2tselFTZ2lSbUZqWlVsdWMzUmhibU5sSWlrZ2RHaGxiZzBLSUNBZ0lDQWdJQ0JwWmlCZlJ5NVRaWFIwYVc1bmN5NUpiV0ZuWlhNdVNXNTJhWE5wWW14bElIUm9aVzRnU1c1emRDNVVjbUZ1YzNCaGNtVnVZM2tnUFNBeElHVnVaQTBLSUNBZ0lDQWdJQ0JwWmlCZlJ5NVRaWFIwYVc1bmN5NUpiV0ZuWlhNdVJHVnpkSEp2ZVNCMGFHVnVJRWx1YzNRNlJHVnpkSEp2ZVNncERRb2dJQ0FnSUNBZ0lHVnVaQTBLSUNBZ0lHVnNjMlZwWmlCMFlXSnNaUzVtYVc1a0tFTmhia0psUlc1aFlteGxaQ3dnU1c1emRDNURiR0Z6YzA1aGJXVXBJSFJvWlc0TkNpQWdJQ0FnSUNBZ2FXWWdYMGN1VTJWMGRHbHVaM011VUdGeWRHbGpiR1Z6TGtsdWRtbHphV0pzWlNCMGFHVnVJRWx1YzNRdVJXNWhZbXhsWkNBOUlHWmhiSE5sSUdWdVpBMEtJQ0FnSUNBZ0lDQnBaaUJmUnk1VFpYUjBhVzVuY3k1UVlYSjBhV05zWlhNdVJHVnpkSEp2ZVNCMGFHVnVJRWx1YzNRNlJHVnpkSEp2ZVNncElHVnVaQTBLSUNBZ0lHVnNjMlZwWmlCSmJuTjBPa2x6UVNnaVVHOXpkRVZtWm1WamRDSXBJR0Z1WkNCZlJ5NVRaWFIwYVc1bmN5NVBkR2hsY2xzaVRtOGdRMkZ0WlhKaElFVm1abVZqZEhNaVhTQjBhR1Z1RFFvZ0lDQWdJQ0FnSUVsdWMzUXVSVzVoWW14bFpDQTlJR1poYkhObERRb2dJQ0FnWld4elpXbG1JRWx1YzNRNlNYTkJLQ0pGZUhCc2IzTnBiMjRpS1NCMGFHVnVEUW9nSUNBZ0lDQWdJR2xtSUY5SExsTmxkSFJwYm1kekxrVjRjR3h2YzJsdmJuTXVVMjFoYkd4bGNpQjBhR1Z1SUVsdWMzUXVRbXhoYzNSUWNtVnpjM1Z5WlNBOUlERTdJRWx1YzNRdVFteGhjM1JTWVdScGRYTWdQU0F4SUdWdVpBMEtJQ0FnSUNBZ0lDQnBaaUJmUnk1VFpYUjBhVzVuY3k1RmVIQnNiM05wYjI1ekxrbHVkbWx6YVdKc1pTQjBhR1Z1SUVsdWMzUXVWbWx6YVdKc1pTQTlJR1poYkhObElHVnVaQTBLSUNBZ0lDQWdJQ0JwWmlCZlJ5NVRaWFIwYVc1bmN5NUZlSEJzYjNOcGIyNXpMa1JsYzNSeWIza2dkR2hsYmlCSmJuTjBPa1JsYzNSeWIza29LU0JsYm1RTkNpQWdJQ0JsYkhObGFXWWdTVzV6ZERwSmMwRW9Ja05zYjNSb2FXNW5JaWtnYjNJZ1NXNXpkRHBKYzBFb0lsTjFjbVpoWTJWQmNIQmxZWEpoYm1ObElpa2dkR2hsYmcwS0lDQWdJQ0FnSUNCcFppQmZSeTVUWlhSMGFXNW5jeTVQZEdobGNsc2lUbThnUTJ4dmRHaGxjeUpkSUhSb1pXNGdTVzV6ZERwRVpYTjBjbTk1S0NrZ1pXNWtEUW9nSUNBZ1pXeHpaV2xtSUVsdWMzUTZTWE5CS0NKQ1lYTmxVR0Z5ZENJcElHRnVaQ0J1YjNRZ1NXNXpkRHBKYzBFb0lrMWxjMmhRWVhKMElpa2dkR2hsYmcwS0lDQWdJQ0FnSUNCcFppQmZSeTVUWlhSMGFXNW5jeTVQZEdobGNsc2lURzkzSUZGMVlXeHBkSGtnVUdGeWRITWlYU0IwYUdWdURRb2dJQ0FnSUNBZ0lDQWdJQ0JKYm5OMExrMWhkR1Z5YVdGc0lEMGdSVzUxYlM1TllYUmxjbWxoYkM1UWJHRnpkR2xqRFFvZ0lDQWdJQ0FnSUNBZ0lDQkpibk4wTGxKbFpteGxZM1JoYm1ObElEMGdNQTBLSUNBZ0lDQWdJQ0JsYm1RTkNpQWdJQ0JsYkhObGFXWWdTVzV6ZERwSmMwRW9JazFsYzJoUVlYSjBJaWtnZEdobGJnMEtJQ0FnSUNBZ0lDQnBaaUJmUnk1VFpYUjBhVzVuY3k1TlpYTm9VR0Z5ZEhNdVRHOTNaWEpSZFdGc2FYUjVJSFJvWlc0Z1NXNXpkQzVTWlc1a1pYSkdhV1JsYkdsMGVTQTlJRVZ1ZFcwdVVtVnVaR1Z5Um1sa1pXeHBkSGt1VUdWeVptOXliV0Z1WTJVN0lFbHVjM1F1VFdGMFpYSnBZV3dnUFNCRmJuVnRMazFoZEdWeWFXRnNMbEJzWVhOMGFXTWdaVzVrRFFvZ0lDQWdJQ0FnSUdsbUlGOUhMbE5sZEhScGJtZHpMazFsYzJoUVlYSjBjeTVKYm5acGMybGliR1VnZEdobGJpQkpibk4wTGxSeVlXNXpjR0Z5Wlc1amVTQTlJREVnWlc1a0RRb2dJQ0FnSUNBZ0lHbG1JRjlITGxObGRIUnBibWR6TGsxbGMyaFFZWEowY3k1T2IxUmxlSFIxY21VZ2RHaGxiaUJKYm5OMExsUmxlSFIxY21WSlJDQTlJQ0lpSUdWdVpBMEtJQ0FnSUNBZ0lDQnBaaUJmUnk1VFpYUjBhVzVuY3k1TlpYTm9VR0Z5ZEhNdVRtOU5aWE5vSUhSb1pXNGdTVzV6ZEM1TlpYTm9TV1FnUFNBaUlpQmxibVFOQ2lBZ0lDQWdJQ0FnYVdZZ1gwY3VVMlYwZEdsdVozTXVUV1Z6YUZCaGNuUnpMa1JsYzNSeWIza2dkR2hsYmlCSmJuTjBPa1JsYzNSeWIza29LU0JsYm1RTkNpQWdJQ0JsYm1RTkNtVnVaQTBLRFFvdExTQlhZWFJsY2cwS1kyOXliM1YwYVc1bExuZHlZWEFvWm5WdVkzUnBiMjRvS1EwS0lDQWdJR2xtSUY5SExsTmxkSFJwYm1kekxrOTBhR1Z5V3lKTWIzY2dWMkYwWlhJZ1IzSmhjR2hwWTNNaVhTQjBhR1Z1RFFvZ0lDQWdJQ0FnSUd4dlkyRnNJSFJsY25KaGFXNGdQU0IzYjNKcmMzQmhZMlU2Um1sdVpFWnBjbk4wUTJocGJHUlBaa05zWVhOektDSlVaWEp5WVdsdUlpa05DaUFnSUNBZ0lDQWdhV1lnZEdWeWNtRnBiaUIwYUdWdURRb2dJQ0FnSUNBZ0lDQWdJQ0IwWlhKeVlXbHVMbGRoZEdWeVYyRjJaVk5wZW1VZ1BTQXdEUW9nSUNBZ0lDQWdJQ0FnSUNCMFpYSnlZV2x1TGxkaGRHVnlWMkYyWlZOd1pXVmtJRDBnTUEwS0lDQWdJQ0FnSUNBZ0lDQWdkR1Z5Y21GcGJpNVhZWFJsY2xKbFpteGxZM1JoYm1ObElEMGdNQTBLSUNBZ0lDQWdJQ0FnSUNBZ2RHVnljbUZwYmk1WFlYUmxjbFJ5WVc1emNHRnlaVzVqZVNBOUlEQU5DaUFnSUNBZ0lDQWdaVzVrRFFvZ0lDQWdJQ0FnSUU1dmRHbG1lU2dpUkhWalRIVnZibWRuSUVacGVFeGhaK0tFb2lJc0lDSnphMmxpYVdScElpa05DaUFnSUNCbGJtUU5DbVZ1WkNrb0tRMEtEUW90TFNCVGFHRmtiM2R6RFFwamIzSnZkWFJwYm1VdWQzSmhjQ2htZFc1amRHbHZiaWdwRFFvZ0lDQWdhV1lnWDBjdVUyVjBkR2x1WjNNdVQzUm9aWEpiSWs1dklGTm9ZV1J2ZDNNaVhTQjBhR1Z1RFFvZ0lDQWdJQ0FnSUV4cFoyaDBhVzVuTGtkc2IySmhiRk5vWVdSdmQzTWdQU0JtWVd4elpRMEtJQ0FnSUNBZ0lDQk1hV2RvZEdsdVp5NUdiMmRGYm1RZ1BTQTVaVGtOQ2lBZ0lDQWdJQ0FnVEdsbmFIUnBibWN1VTJoaFpHOTNVMjltZEc1bGMzTWdQU0F3RFFvZ0lDQWdJQ0FnSUU1dmRHbG1lU2dpZE1PMGFTQmk0YnVMSUc1bmRlS0VvaUlzSUNKMHc3UnBJR3RvdzdSdVp5QnVaM1VpS1EwS0lDQWdJR1Z1WkEwS1pXNWtLU2dwRFFvTkNpMHRJRkpsYm1SbGNtbHVadzBLWTI5eWIzVjBhVzVsTG5keVlYQW9ablZ1WTNScGIyNG9LUTBLSUNBZ0lHbG1JRjlITGxObGRIUnBibWR6TGs5MGFHVnlXeUpNYjNjZ1VtVnVaR1Z5YVc1bklsMGdkR2hsYmcwS0lDQWdJQ0FnSUNCelpYUjBhVzVuY3lncExsSmxibVJsY21sdVp5NVJkV0ZzYVhSNVRHVjJaV3dnUFNCRmJuVnRMbEYxWVd4cGRIbE1aWFpsYkM1TVpYWmxiREF4RFFvZ0lDQWdJQ0FnSUU1dmRHbG1lU2dpYmVHN21YUWdZOE9oYVNCamFPRzZ2M1FnZEhKMWVlRzdnVzRnZEdqRHRHNW40b1NpSWl3Z0ltUERvV01nWXVHNm9XNGdZOE96SUhSbzRicWxlU0J5NGJxbGRDQndhR25odTRGdUlHdG93N1J1WnlJcERRb2dJQ0FnWlc1a0RRcGxibVFwS0NrTkNnMEtMUzBnVFdGMFpYSnBZV3h6RFFwamIzSnZkWFJwYm1VdWQzSmhjQ2htZFc1amRHbHZiaWdwRFFvZ0lDQWdhV1lnWDBjdVUyVjBkR2x1WjNNdVQzUm9aWEpiSWxKbGMyVjBJRTFoZEdWeWFXRnNjeUpkSUhSb1pXNE5DaUFnSUNBZ0lDQWdabTl5SUY4c0lIWWdhVzRnY0dGcGNuTW9UV0YwWlhKcFlXeFRaWEoyYVdObE9rZGxkRU5vYVd4a2NtVnVLQ2twSUdSdklIWTZSR1Z6ZEhKdmVTZ3BJR1Z1WkEwS0lDQWdJQ0FnSUNCTllYUmxjbWxoYkZObGNuWnBZMlV1VlhObE1qQXlNazFoZEdWeWFXRnNjeUE5SUdaaGJITmxEUW9nSUNBZ0lDQWdJRTV2ZEdsbWVTZ2llR2x1SUd6aHU1ZHBJSGJEckNCeGRjT2hJR1I2NG9TaUlpd2dJbVBodXFOdElNYWhiaUlwRFFvZ0lDQWdaVzVrRFFwbGJtUXBLQ2tOQ2cwS0xTMGdSbEJUSUVOaGNBMEtZMjl5YjNWMGFXNWxMbmR5WVhBb1puVnVZM1JwYjI0b0tRMEtJQ0FnSUdsbUlGOUhMbE5sZEhScGJtZHpMazkwYUdWeVd5SkdVRk1nUTJGd0lsMGdZVzVrSUhObGRHWndjMk5oY0NCMGFHVnVEUW9nSUNBZ0lDQWdJSE5sZEdad2MyTmhjQ2hmUnk1VFpYUjBhVzVuY3k1UGRHaGxjbHNpUmxCVElFTmhjQ0pkS1EwS0lDQWdJQ0FnSUNCT2IzUnBabmtvSW5SbzRicXZibWNnYm1maHU0MTA0b1NpSWl3Z0ltdmh1cmx2SUdOdmJpQWlMaTVmUnk1VFpYUjBhVzVuY3k1UGRHaGxjbHNpUmxCVElFTmhjQ0pkS1EwS0lDQWdJR1Z1WkEwS1pXNWtLU2dwRFFvTkNpMHRJRk5yYVd4c0lHVm1abVZqZENCeVpXUjFZM1JwYjI0Z0tFOXdkR2x0YVhwbFpDa05DbWxtSUY5SExsTmxkSFJwYm1kekxrOTBhR1Z5V3lKVGEybHNiQ0JGWm1abFkzUWdVbVZrZFdOMGFXOXVJbDBnZEdobGJnMEtJQ0FnSUd4dlkyRnNJR1oxYm1OMGFXOXVJRVJwYzJGaWJHVlRhMmxzYkVWbVptVmpkSE1vYVc1emRDa05DaUFnSUNBZ0lDQWdhV1lnYVc1emREcEpjMEVvSWxCaGNuUnBZMnhsUlcxcGRIUmxjaUlwSUc5eUlHbHVjM1E2U1hOQktDSlVjbUZwYkNJcElHOXlJR2x1YzNRNlNYTkJLQ0pHYVhKbElpa2diM0lnYVc1emREcEpjMEVvSWxOdGIydGxJaWtnZEdobGJnMEtJQ0FnSUNBZ0lDQWdJQ0FnYVc1emRDNUZibUZpYkdWa0lEMGdabUZzYzJVTkNpQWdJQ0FnSUNBZ1pXeHpaV2xtSUdsdWMzUTZTWE5CS0NKRmVIQnNiM05wYjI0aUtTQjBhR1Z1RFFvZ0lDQWdJQ0FnSUNBZ0lDQnBibk4wTGtKc1lYTjBVSEpsYzNOMWNtVWdQU0F3RFFvZ0lDQWdJQ0FnSUNBZ0lDQnBibk4wTGtKc1lYTjBVbUZrYVhWeklEMGdNQTBLSUNBZ0lDQWdJQ0FnSUNBZ2FXNXpkQzVXYVhOcFlteGxJRDBnWm1Gc2MyVU5DaUFnSUNBZ0lDQWdaVzVrRFFvZ0lDQWdaVzVrRFFvZ0lDQWdMUzBnUVhCd2JIa2dkRzhnWlhocGMzUnBibWNnWVc1a0lHWjFkSFZ5WlNCcGJuTjBZVzVqWlhNTkNpQWdJQ0JtYjNJZ1h5d2dkaUJwYmlCd1lXbHljeWgzYjNKcmMzQmhZMlU2UjJWMFJHVnpZMlZ1WkdGdWRITW9LU2tnWkc4Z1JHbHpZV0pzWlZOcmFXeHNSV1ptWldOMGN5aDJLU0JsYm1RTkNpQWdJQ0IzYjNKcmMzQmhZMlV1UkdWelkyVnVaR0Z1ZEVGa1pHVmtPa052Ym01bFkzUW9SR2x6WVdKc1pWTnJhV3hzUldabVpXTjBjeWtOQ2lBZ0lDQk9iM1JwWm5rb0lsVER0R2tnWm1GdUlHNW40YnVOZENJcERRcGxibVFOQ2cwS0xTMGdRWEJ3YkhrZ2RHOGdZV3hzSUdWNGFYTjBhVzVuSUdsdWMzUmhibU5sY3cwS1ptOXlJRjhzSUhZZ2FXNGdjR0ZwY25Nb1oyRnRaVHBIWlhSRVpYTmpaVzVrWVc1MGN5Z3BLU0JrYnlCRGFHVmphMGxtUW1Ga0tIWXBJR1Z1WkEwS1oyRnRaUzVFWlhOalpXNWtZVzUwUVdSa1pXUTZRMjl1Ym1WamRDaG1kVzVqZEdsdmJpaDJLUTBLSUNBZ0lIUmhjMnN1ZDJGcGRDZ3dMakVwRFFvZ0lDQWdRMmhsWTJ0SlprSmhaQ2gyS1EwS1pXNWtLUTBLRFFwT2IzUnBabmtvSWtSMVkweDFiMjVuWnlCR2FYaE1ZV2ZpaEtJaUxDQWlXR2tnVGNTRGJtY2dSV1JwZEdsdmJpQXJJRUZ1ZEdsVGEybHNiRVZtWm1WamRDQk1iMkZrWldRaElpd2dNVEFwDQpdXQ0KDQpwcmludChiYXNlNjRfZGVjb2RlKGVuY29kZWQpKQ==
-]]
+local function make(class, props)
+    local inst = Instance.new(class)
+    if props then
+        for k,v in pairs(props) do
+            if k ~= "Parent" then
+                pcall(function() inst[k] = v end)
+            end
+        end
+    end
+    if props and props.Parent then safeParent(inst, props.Parent) end
+    return inst
+end
 
-print(base64_decode(encoded))
+local function disconnectAll(t)
+    for _,c in ipairs(t) do
+        if c and type(c)=="RBXScriptConnection" then pcall(function() c:Disconnect() end) end
+    end
+    for i=1,#t do t[i] = nil end
+end
+
+-- ===== Teleport helpers =====
+local function teleportToCFrame(cf)
+    if not LocalPlayer or not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return false, "no local character" end
+    local ok, err = pcall(function() LocalPlayer.Character:SetPrimaryPartCFrame(cf) end)
+    return ok, err
+end
+
+local function teleportToPlayer(target)
+    if not target or not target.Character or not target.Character.PrimaryPart then return false, "invalid target" end
+    local tgt = target.Character.PrimaryPart
+    local forward = tgt.CFrame.LookVector * TELEPORT_FORWARD_DIST
+    local pos = tgt.Position + forward + Vector3.new(0, TELEPORT_UP_OFFSET, 0)
+    return teleportToCFrame(CFrame.new(pos, tgt.Position))
+end
+
+local function findNearestGeneratorPoint(gen)
+    if not gen then return nil end
+    local bestPart = nil
+    local bestDist = math.huge
+    local localPos = nil
+    if LocalPlayer and LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then localPos = LocalPlayer.Character.PrimaryPart.Position end
+    for _,desc in ipairs(gen:GetDescendants()) do
+        if desc:IsA("BasePart") then
+            if tostring(desc.Name):match("^GeneratorPoint") then
+                if localPos then
+                    local d = (desc.Position - localPos).Magnitude
+                    if d < bestDist then bestDist = d; bestPart = desc end
+                else
+                    bestPart = desc
+                    break
+                end
+            end
+        end
+    end
+    if not bestPart then
+        for _,desc in ipairs(gen:GetDescendants()) do
+            if desc:IsA("BasePart") then
+                bestPart = desc
+                break
+            end
+        end
+    end
+    return bestPart
+end
+
+local function teleportToGenerator(gen)
+    if not gen then return false, "no gen" end
+    local part = findNearestGeneratorPoint(gen)
+    if not part then return false, "no generator point" end
+    local pos = part.Position + Vector3.new(0, TELEPORT_UP_OFFSET, 0)
+    return teleportToCFrame(CFrame.new(pos, part.Position))
+end
+
+-- ===== ESP helpers =====
+local function createOrUpdateListCanvas()
+    if UI.listFrame and UI.listLayout then
+        pcall(function()
+            UI.listFrame.CanvasSize = UDim2.new(0, 0, 0, UI.listLayout.AbsoluteContentSize.Y + 8)
+        end)
+    end
+end
+
+local function clearESPForPlayer(player)
+    local d = espData[player]
+    if not d then return end
+    pcall(function() if d.labelInList then d.labelInList:Destroy() end end)
+    pcall(function() if d.billboard and d.billboard.Parent then d.billboard:Destroy() end end)
+    pcall(function() if d.dot and d.dot.Parent then d.dot.Parent:Destroy() end end)
+    pcall(function() if d.highlight and d.highlight.Parent then d.highlight:Destroy() end end)
+    if d.charConn and type(d.charConn)=="RBXScriptConnection" then pcall(function() d.charConn:Disconnect() end) end
+    espData[player] = nil
+    createOrUpdateListCanvas()
+end
+
+local function updateESPVisibilityForPlayer(player)
+    -- gọi khi distance thay đổi hoặc MAX_DIST thay đổi
+    local d = espData[player]
+    if not d then return end
+    if not LocalPlayer or not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then
+        -- can't compute -> default visible only label
+        if d.labelInList then d.labelInList.TextColor3 = Color3.fromRGB(200,200,200) end
+        if d.billboard and d.billboard.Parent then d.billboard.Enabled = false end
+        if d.dot and d.dot.Parent then d.dot.Parent.Enabled = false end
+        if d.highlight and d.highlight.Parent then d.highlight.Enabled = false end
+        return
+    end
+    if player.Character and player.Character.PrimaryPart then
+        local dist = (player.Character.PrimaryPart.Position - LocalPlayer.Character.PrimaryPart.Position).Magnitude
+        local within = dist <= MAX_DIST
+        -- label color + text
+        local color = Color3.fromRGB(0,255,0)
+        if player.Team and tostring(player.Team):lower():find("kill") then color = Color3.fromRGB(255,0,0) end
+        if d.labelInList then
+            d.labelInList.Text = player.Name .. " ("..math.floor(dist).."m)"
+            d.labelInList.TextColor3 = color
+        end
+        if d.billboard and d.billboard.Parent then
+            local tb = d.billboard:FindFirstChildOfClass("TextLabel")
+            if tb then
+                tb.Text = player.Name .. " ("..math.floor(dist).."m)"
+                tb.TextColor3 = color
+                d.billboard.Enabled = within
+            end
+        end
+        if d.dot and d.dot.Parent then
+            pcall(function() d.dot.BackgroundColor3 = color end)
+            d.dot.Parent.Enabled = within
+        end
+        if d.highlight and d.highlight.Parent then
+            pcall(function() d.highlight.FillColor = color; d.highlight.Enabled = within end)
+        end
+    else
+        if d.labelInList then d.labelInList.Text = player.Name; d.labelInList.TextColor3 = Color3.fromRGB(200,200,200) end
+        if d.billboard and d.billboard.Parent then d.billboard.Enabled = false end
+        if d.dot and d.dot.Parent then d.dot.Parent.Enabled = false end
+        if d.highlight and d.highlight.Parent then d.highlight.Enabled = false end
+    end
+end
+
+local function ensureBillboardName(player, character)
+    if not player or not character then return end
+    local d = espData[player]
+    if not d then return end
+    pcall(function()
+        if d.billboard and d.billboard.Parent then d.billboard:Destroy() end
+        local head = character:FindFirstChild("Head")
+        if head and head:IsA("BasePart") then
+            local bg = Instance.new("BillboardGui")
+            bg.Name = "LVM_Billboard"
+            bg.Adornee = head
+            bg.Size = UDim2.new(0, 140, 0, 40)
+            bg.AlwaysOnTop = true
+            bg.StudsOffset = Vector3.new(0, 2.6, 0)
+            bg.Parent = head
+
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.BackgroundTransparency = 1
+            label.Font = Enum.Font.GothamBold
+            label.TextSize = 14
+            label.TextColor3 = Color3.fromRGB(240,240,240)
+            label.Text = player.Name
+            label.Parent = bg
+
+            d.billboard = bg
+        end
+    end)
+end
+
+local function setupCharForPlayer(player, character)
+    if not player or not character then return end
+    local d = espData[player]
+    if not d then return end
+
+    pcall(function() if d.highlight and d.highlight.Parent then d.highlight:Destroy() end end)
+    pcall(function() if d.dot and d.dot.Parent then d.dot.Parent:Destroy() end end)
+    pcall(function() if d.billboard and d.billboard.Parent then d.billboard:Destroy() end end)
+
+    safePcall(function()
+        local hl = Instance.new("Highlight")
+        hl.Name = "LVM_Player_HL"
+        hl.Adornee = character
+        hl.FillTransparency = 0.5
+        hl.OutlineTransparency = 1
+        hl.Parent = character
+        d.highlight = hl
+    end)
+
+    safePcall(function()
+        local head = character:FindFirstChild("Head")
+        if head and head:IsA("BasePart") then
+            local bg = Instance.new("BillboardGui")
+            bg.Name = "LVM_Player_Dot"
+            bg.Adornee = head
+            bg.Size = UDim2.new(0, 60, 0, 20)
+            bg.AlwaysOnTop = true
+            bg.Parent = head
+
+            local dot = Instance.new("Frame")
+            dot.Size = UDim2.new(0, 10, 0, 10)
+            dot.Position = UDim2.new(0.5, -5, 0, -10)
+            dot.BorderSizePixel = 0
+            dot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            local corner = Instance.new("UICorner", dot)
+            corner.CornerRadius = UDim.new(1, 0)
+            dot.Parent = bg
+
+            d.dot = dot
+        end
+    end)
+
+    ensureBillboardName(player, character)
+    updateESPVisibilityForPlayer(player)
+end
+
+local function applyPlayerESP(player)
+    if not player or player == LocalPlayer or espData[player] then return end
+    local data = {}
+    espData[player] = data
+
+    if UI.listFrame then
+        local label = make("TextLabel", {
+            Parent = UI.listFrame,
+            Size = UDim2.new(1, -10, 0, 18),
+            BackgroundTransparency = 1,
+            Text = player.Name,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Font = Enum.Font.Gotham,
+            TextSize = 13,
+            TextColor3 = Color3.fromRGB(240,240,240)
+        })
+        data.labelInList = label
+        createOrUpdateListCanvas()
+    end
+
+    if player.Character then
+        pcall(function() setupCharForPlayer(player, player.Character) end)
+    end
+
+    data.charConn = player.CharacterAdded:Connect(function(c)
+        task.wait(0.2)
+        pcall(function() setupCharForPlayer(player, c) end)
+    end)
+end
+
+-- ===== Generator functions =====
+local function applyGenESP(gen)
+    if not gen or genData[gen] then return end
+    safePcall(function()
+        local hl = Instance.new("Highlight")
+        hl.Name = "LVM_Gen_HL"
+        hl.Adornee = gen
+        hl.FillColor = Color3.fromRGB(255, 215, 0)
+        hl.FillTransparency = 0.5
+        hl.OutlineTransparency = 0
+        hl.Parent = gen
+        genData[gen] = { highlight = hl }
+    end)
+end
+
+local function clearESPForGen(gen)
+    local d = genData[gen]
+    if not d then return end
+    pcall(function() if d.highlight and d.highlight.Parent then d.highlight:Destroy() end end)
+    genData[gen] = nil
+end
+
+-- ===== Lists =====
+local function rebuildPlayerList()
+    playerList = {}
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then table.insert(playerList, p) end
+    end
+    if #playerList == 0 then currentPlayerIndex = 0 else currentPlayerIndex = math.clamp(currentPlayerIndex, 1, #playerList) end
+end
+
+local function rebuildGenList()
+    genList = {}
+    for gen,_ in pairs(genData) do
+        if gen and gen.Parent then table.insert(genList, gen) end
+    end
+    for _,obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and tostring(obj.Name):lower():find("gen") and not genData[obj] then
+            applyGenESP(obj)
+            table.insert(genList, obj)
+        end
+    end
+    if #genList == 0 then currentGenIndex = 0 else currentGenIndex = math.clamp(currentGenIndex, 1, #genList) end
+end
+
+local function updateSelectorLabel()
+    if not UI.nameLabel then return end
+    if #playerList == 0 or currentPlayerIndex == 0 then UI.nameLabel.Text = "No players" else
+        local p = playerList[currentPlayerIndex]
+        if p and LocalPlayer and LocalPlayer.Character and LocalPlayer.Character.PrimaryPart and p.Character and p.Character.PrimaryPart then
+            local d = math.floor((p.Character.PrimaryPart.Position - LocalPlayer.Character.PrimaryPart.Position).Magnitude)
+            UI.nameLabel.Text = p.Name .. " (" .. d .. "m)"
+        else
+            UI.nameLabel.Text = (p and p.Name) or "Unknown"
+        end
+    end
+    if UI.genLabel then
+        if #genList == 0 or currentGenIndex == 0 then UI.genLabel.Text = "No gen" else UI.genLabel.Text = genList[currentGenIndex].Name or "Gen" end
+    end
+end
+
+-- ===== GUI creation =====
+local function clearGuiState()
+    disconnectAll(guiConns)
+    guiConns = {}
+    UI = {}
+end
+
+local function createGUI()
+    if screenGui and screenGui.Parent then
+        pcall(function() screenGui:Destroy() end)
+    end
+    clearGuiState()
+
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = UI_NAME
+    screenGui.ResetOnSpawn = false
+    safeParent(screenGui, tryGetGuiParent())
+
+    local frame = make("Frame", {
+        Parent = screenGui,
+        Size = UDim2.new(0, 360, 0, 420),
+        Position = UDim2.new(1, -380, 0.10, 0),
+        BackgroundColor3 = Color3.fromRGB(28, 28, 28),
+        BorderSizePixel = 0,
+        Active = true,
+    })
+    make("UICorner", { Parent = frame, CornerRadius = UDim.new(0, 8) })
+
+    -- draggable
+    do
+        local dragging, dragStart, startPos
+        local c1 = frame.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                dragStart = input.Position
+                startPos = frame.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then dragging = false end
+                end)
+            end
+        end)
+        local c2 = frame.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+                local delta = input.Position - dragStart
+                frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end)
+        table.insert(guiConns, c1); table.insert(guiConns, c2)
+    end
+
+    local title = make("TextLabel", { Parent = frame, Size = UDim2.new(1,0,0,28), Text = "🧠 LVM Ultimate v3.8 (Stealth)", BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(240,240,240), Font = Enum.Font.GothamBold, TextSize = 16 })
+
+    local listFrame = make("ScrollingFrame", { Parent = frame, Size = UDim2.new(1, -16, 0, 180), Position = UDim2.new(0, 8, 0, 36), BackgroundTransparency = 1, CanvasSize = UDim2.new(0,0,0,0) })
+    local listLayout = make("UIListLayout", { Parent = listFrame, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) })
+
+    local controls = make("Frame", { Parent = frame, Size = UDim2.new(1, -16, 0, 28), Position = UDim2.new(0, 8, 0, 228), BackgroundTransparency = 1 })
+    local espToggle = make("TextButton", { Parent = controls, Size = UDim2.new(0.22, 0, 1, 0), Position = UDim2.new(0, 0, 0, 0), Text = "ESP: ON", BackgroundColor3 = Color3.fromRGB(60,60,60), BorderSizePixel = 0, Font = Enum.Font.Gotham, TextSize = 13 })
+    local distInput = make("TextBox", { Parent = controls, Size = UDim2.new(0.22, 0, 1, 0), Position = UDim2.new(0.24, 6, 0, 0), Text = tostring(MAX_DIST), ClearTextOnFocus = false, BackgroundColor3 = Color3.fromRGB(40,40,44), BorderSizePixel = 0, Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = Color3.fromRGB(230,230,230), TextXAlignment = Enum.TextXAlignment.Center })
+    local speedInput = make("TextBox", { Parent = controls, Size = UDim2.new(0.22, 0, 1, 0), Position = UDim2.new(0.48, 12, 0, 0), Text = tostring(APPLIED_SPEED), ClearTextOnFocus = false, BackgroundColor3 = Color3.fromRGB(40,40,44), BorderSizePixel = 0, Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = Color3.fromRGB(230,230,230), TextXAlignment = Enum.TextXAlignment.Center })
+    local applySpeedBtn = make("TextButton", { Parent = controls, Size = UDim2.new(0.12, 0, 1, 0), Position = UDim2.new(0.72, 12, 0, 0), Text = "Apply", BackgroundColor3 = Color3.fromRGB(70,120,240), BorderSizePixel = 0, Font = Enum.Font.GothamBold, TextSize = 13 })
+    local speedToggleBtn = make("TextButton", { Parent = controls, Size = UDim2.new(0.12, 0, 1, 0), Position = UDim2.new(0.84, 18, 0, 0), Text = "Off", BackgroundColor3 = Color3.fromRGB(120,120,120), BorderSizePixel = 0, Font = Enum.Font.GothamBold, TextSize = 12 })
+
+    local selectorFrame = make("Frame", { Parent = frame, Size = UDim2.new(1, -16, 0, 28), Position = UDim2.new(0, 8, 0, 264), BackgroundTransparency = 1 })
+    local leftBtn = make("TextButton", { Parent = selectorFrame, Size = UDim2.new(0, 28, 1, 0), Position = UDim2.new(0, 0, 0, 0), Text = "<", Font = Enum.Font.GothamBold, TextSize = 16, BorderSizePixel = 0 })
+    local nameLabel = make("TextLabel", { Parent = selectorFrame, Size = UDim2.new(0.6, -4, 1, 0), Position = UDim2.new(0.12, 30, 0, 0), Text = "Nobody", BackgroundTransparency = 1, TextScaled = true, Font = Enum.Font.Gotham, TextSize = 14, TextColor3 = Color3.fromRGB(240,240,240), TextXAlignment = Enum.TextXAlignment.Center })
+    local rightBtn = make("TextButton", { Parent = selectorFrame, Size = UDim2.new(0, 28, 1, 0), Position = UDim2.new(0.74, 0, 0, 0), Text = ">", Font = Enum.Font.GothamBold, TextSize = 16, BorderSizePixel = 0 })
+
+    local teleportPlayerBtn = make("TextButton", { Parent = frame, Size = UDim2.new(0.46, -14, 0, 28), Position = UDim2.new(0, 8, 0, 296), Text = "Teleport Player", BackgroundColor3 = Color3.fromRGB(70,120,240), BorderSizePixel = 0, Font = Enum.Font.GothamBold, TextSize = 14 })
+    local teleportGenBtn = make("TextButton", { Parent = frame, Size = UDim2.new(0.46, -14, 0, 28), Position = UDim2.new(0.54, 6, 0, 296), Text = "Teleport Gen", BackgroundColor3 = Color3.fromRGB(90,160,60), BorderSizePixel = 0, Font = Enum.Font.GothamBold, TextSize = 14 })
+
+    local genSelectorFrame = make("Frame", { Parent = frame, Size = UDim2.new(1, -16, 0, 28), Position = UDim2.new(0, 8, 0, 332), BackgroundTransparency = 1 })
+    local genLeft = make("TextButton", { Parent = genSelectorFrame, Size = UDim2.new(0, 28, 1, 0), Position = UDim2.new(0, 0, 0, 0), Text = "<", Font = Enum.Font.GothamBold, TextSize = 16, BorderSizePixel = 0 })
+    local genLabel = make("TextLabel", { Parent = genSelectorFrame, Size = UDim2.new(0.8, -40, 1, 0), Position = UDim2.new(0.12, 30, 0, 0), Text = "No gen", BackgroundTransparency = 1, TextScaled = true, Font = Enum.Font.Gotham, TextSize = 14, TextColor3 = Color3.fromRGB(240,240,240), TextXAlignment = Enum.TextXAlignment.Center })
+    local genRight = make("TextButton", { Parent = genSelectorFrame, Size = UDim2.new(0, 28, 1, 0), Position = UDim2.new(0.92, 0, 0, 0), Text = ">", Font = Enum.Font.GothamBold, TextSize = 16, BorderSizePixel = 0 })
+
+    local clearBtn = make("TextButton", { Parent = frame, Size = UDim2.new(1, -16, 0, 28), Position = UDim2.new(0, 8, 0, 368), Text = "Clear All & Destroy GUI", BackgroundColor3 = Color3.fromRGB(200,50,50), BorderSizePixel = 0, Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Color3.fromRGB(255,255,255) })
+
+    -- store UI refs
+    UI.screenGui = screenGui
+    UI.frame = frame
+    UI.listFrame = listFrame
+    UI.listLayout = listLayout
+    UI.espToggle = espToggle
+    UI.distInput = distInput
+    UI.speedInput = speedInput
+    UI.applySpeedBtn = applySpeedBtn
+    UI.speedToggleBtn = speedToggleBtn
+    UI.leftBtn = leftBtn
+    UI.rightBtn = rightBtn
+    UI.nameLabel = nameLabel
+    UI.teleportPlayerBtn = teleportPlayerBtn
+    UI.teleportGenBtn = teleportGenBtn
+    UI.genLeft = genLeft
+    UI.genRight = genRight
+    UI.genLabel = genLabel
+    UI.clearBtn = clearBtn
+
+    -- wire events
+    table.insert(guiConns, espToggle.MouseButton1Click:Connect(function()
+        ESP_ENABLED = not ESP_ENABLED
+        espToggle.Text = "ESP: " .. (ESP_ENABLED and "ON" or "OFF")
+        -- update visuals immediately
+        for p,_ in pairs(espData) do updateESPVisibilityForPlayer(p) end
+    end))
+
+    table.insert(guiConns, distInput.FocusLost:Connect(function()
+        local n = tonumber(distInput.Text)
+        if n and n > 10 then MAX_DIST = n else distInput.Text = tostring(MAX_DIST) end
+        for p,_ in pairs(espData) do updateESPVisibilityForPlayer(p) end
+    end))
+
+    local function applySpeedFromUI()
+        local s = tonumber(UI.speedInput.Text)
+        if s and s >= 0 then
+            APPLIED_SPEED = s
+            if SPEED_ENABLED and LocalPlayer and LocalPlayer.Character then
+                local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if h and not STEALTH_SPEED then pcall(function() h.WalkSpeed = APPLIED_SPEED end) end
+            end
+        else
+            UI.speedInput.Text = tostring(APPLIED_SPEED)
+        end
+    end
+    table.insert(guiConns, applySpeedBtn.MouseButton1Click:Connect(function() applySpeedFromUI() end))
+    table.insert(guiConns, UI.speedInput.FocusLost:Connect(function() applySpeedFromUI() end))
+
+    table.insert(guiConns, UI.speedToggleBtn.MouseButton1Click:Connect(function()
+        -- toggle both speed on/off; hold shift to toggle stealth variant
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) then
+            STEALTH_SPEED = not STEALTH_SPEED
+            UI.speedToggleBtn.Text = STEALTH_SPEED and "On (Stealth)" or (SPEED_ENABLED and "On" or "Off")
+            UI.speedToggleBtn.BackgroundColor3 = STEALTH_SPEED and Color3.fromRGB(170,85,255) or (SPEED_ENABLED and Color3.fromRGB(70,120,240) or Color3.fromRGB(120,120,120))
+            return
+        end
+
+        if SPEED_ENABLED then
+            SPEED_ENABLED = false
+            UI.speedToggleBtn.Text = "Off"
+            UI.speedToggleBtn.BackgroundColor3 = Color3.fromRGB(120,120,120)
+            if LocalPlayer and LocalPlayer.Character then
+                local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if h and ORIGINAL_SPEED then pcall(function() h.WalkSpeed = ORIGINAL_SPEED end) end
+            end
+        else
+            SPEED_ENABLED = true
+            APPLIED_SPEED = tonumber(UI.speedInput.Text) or APPLIED_SPEED
+            UI.speedToggleBtn.Text = STEALTH_SPEED and "On (Stealth)" or "On"
+            UI.speedToggleBtn.BackgroundColor3 = STEALTH_SPEED and Color3.fromRGB(170,85,255) or Color3.fromRGB(70,120,240)
+            if LocalPlayer and LocalPlayer.Character then
+                local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if h then
+                    ORIGINAL_SPEED = ORIGINAL_SPEED or h.WalkSpeed
+                    if not STEALTH_SPEED then pcall(function() h.WalkSpeed = APPLIED_SPEED end) end
+                end
+            end
+        end
+    end))
+
+    -- selector
+    table.insert(guiConns, leftBtn.MouseButton1Click:Connect(function()
+        if #playerList == 0 then return end
+        currentPlayerIndex = currentPlayerIndex - 1
+        if currentPlayerIndex < 1 then currentPlayerIndex = #playerList end
+        updateSelectorLabel()
+    end))
+    table.insert(guiConns, rightBtn.MouseButton1Click:Connect(function()
+        if #playerList == 0 then return end
+        currentPlayerIndex = currentPlayerIndex + 1
+        if currentPlayerIndex > #playerList then currentPlayerIndex = 1 end
+        updateSelectorLabel()
+    end))
+
+    -- teleport player
+    table.insert(guiConns, teleportPlayerBtn.MouseButton1Click:Connect(function()
+        if #playerList == 0 or currentPlayerIndex == 0 then return end
+        local target = playerList[currentPlayerIndex]
+        if target then local ok,err = teleportToPlayer(target) if not ok then warn("Teleport player failed:", err) end end
+    end))
+
+    -- teleport gen
+    table.insert(guiConns, teleportGenBtn.MouseButton1Click:Connect(function()
+        if #genList == 0 or currentGenIndex == 0 then return end
+        local gen = genList[currentGenIndex]
+        if gen then local ok,err = teleportToGenerator(gen) if not ok then warn("Teleport gen failed:", err) end end
+    end))
+
+    -- gen selector
+    table.insert(guiConns, genLeft.MouseButton1Click:Connect(function()
+        if #genList == 0 then return end
+        currentGenIndex = currentGenIndex - 1
+        if currentGenIndex < 1 then currentGenIndex = #genList end
+        updateSelectorLabel()
+    end))
+    table.insert(guiConns, genRight.MouseButton1Click:Connect(function()
+        if #genList == 0 then return end
+        currentGenIndex = currentGenIndex + 1
+        if currentGenIndex > #genList then currentGenIndex = 1 end
+        updateSelectorLabel()
+    end))
+
+    -- clear
+    table.insert(guiConns, clearBtn.MouseButton1Click:Connect(function()
+        cleanupAll()
+    end))
+
+    UI.listLayout = listLayout
+
+    rebuildPlayerList()
+    rebuildGenList()
+    createOrUpdateListCanvas()
+    updateSelectorLabel()
+end
+
+-- ensure GUI exists (debounced)
+local function ensureGUIExists()
+    local now = tick()
+    if now - lastGuiEnsure < GUI_RECREATE_DEBOUNCE then return end
+    lastGuiEnsure = now
+    if not screenGui or not screenGui.Parent then
+        createGUI()
+    else
+        local parent = tryGetGuiParent()
+        if screenGui.Parent ~= parent then safeParent(screenGui, parent) end
+    end
+end
+
+-- ===== Cleanup =====
+function cleanupAll()
+    for p,_ in pairs(espData) do
+        clearESPForPlayer(p)
+    end
+    for g,_ in pairs(genData) do
+        clearESPForGen(g)
+    end
+    espData = {}
+    genData = {}
+    playerList = {}
+    genList = {}
+    if screenGui and screenGui.Parent then pcall(function() screenGui:Destroy() end) end
+    clearGuiState()
+end
+_G.LVM_CleanupAll = cleanupAll
+
+-- ===== Core init and listeners =====
+for _,p in ipairs(Players:GetPlayers()) do
+    applyPlayerESP(p)
+end
+
+Players.PlayerAdded:Connect(function(p)
+    applyPlayerESP(p)
+    rebuildPlayerList()
+    updateSelectorLabel()
+end)
+Players.PlayerRemoving:Connect(function(p)
+    clearESPForPlayer(p)
+    rebuildPlayerList()
+    updateSelectorLabel()
+end)
+
+for _,obj in ipairs(Workspace:GetDescendants()) do
+    if obj:IsA("Model") and tostring(obj.Name):lower():find("gen") then
+        applyGenESP(obj)
+    end
+end
+
+Workspace.DescendantAdded:Connect(function(o)
+    if o:IsA("Model") and tostring(o.Name):lower():find("gen") then
+        applyGenESP(o)
+        rebuildGenList()
+        updateSelectorLabel()
+    end
+end)
+Workspace.DescendantRemoving:Connect(function(o)
+    if genData[o] then clearESPForGen(o) end
+    rebuildGenList()
+    updateSelectorLabel()
+end)
+
+if LocalPlayer then
+    LocalPlayer.CharacterAdded:Connect(function(char)
+        task.wait(0.25)
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then ORIGINAL_SPEED = ORIGINAL_SPEED or humanoid.WalkSpeed end
+        if SPEED_ENABLED and humanoid and not STEALTH_SPEED then pcall(function() humanoid.WalkSpeed = APPLIED_SPEED end) end
+        for pl, data in pairs(espData) do
+            if pl.Character then pcall(function() setupCharForPlayer(pl, pl.Character) end) end
+        end
+    end)
+end
+
+-- Heartbeat: update labels, colors, remove empty gens, apply speed
+RunService.Heartbeat:Connect(function(dt)
+    -- update player visuals
+    for player, data in pairs(espData) do
+        if not data or not player then
+            -- skip
+        else
+            if not ESP_ENABLED then
+                if data.labelInList then data.labelInList.TextColor3 = Color3.fromRGB(140,140,140) end
+                if data.billboard and data.billboard.Parent then data.billboard.Enabled = false end
+                if data.dot and data.dot.Parent then data.dot.Parent.Enabled = false end
+                if data.highlight and data.highlight.Parent then data.highlight.Enabled = false end
+            else
+                updateESPVisibilityForPlayer(player)
+            end
+        end
+    end
+
+    -- generator upkeep
+    for gen, d in pairs(genData) do
+        if not gen or not gen.Parent then
+            clearESPForGen(gen)
+        else
+            local points = 0
+            for _, child in ipairs(gen:GetChildren()) do
+                if child.Name:match("^GeneratorPoint") then points = points + 1 end
+            end
+            if points == 0 then
+                if d.highlight and d.highlight.Parent then
+                    pcall(function() d.highlight:Destroy() end)
+                end
+                genData[gen] = nil
+            else
+                if d.highlight then pcall(function() d.highlight.Enabled = true end) end
+            end
+        end
+    end
+
+    updateSelectorLabel()
+
+    -- apply speed if enabled
+    if SPEED_ENABLED and LocalPlayer and LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            if STEALTH_SPEED then
+                -- stealth: apply small velocity pulses based on MoveDirection to emulate speed without setting WalkSpeed
+                local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local moveDir = humanoid.MoveDirection
+                    if moveDir.Magnitude > 0.01 then
+                        -- set velocity along moveDir, preserve Y velocity
+                        local vel = moveDir.Unit * APPLIED_SPEED
+                        local currentY = root.Velocity.Y
+                        pcall(function() root.Velocity = Vector3.new(vel.X, currentY, vel.Z) end)
+                    end
+                end
+            else
+                pcall(function() humanoid.WalkSpeed = APPLIED_SPEED end)
+            end
+        end
+    end
+end)
+
+-- GUI persistence monitor (debounced)
+task.spawn(function()
+    while true do
+        ensureGUIExists()
+        task.wait(CHECK_GUI_INTERVAL)
+    end
+end)
+
+-- Hotkeys
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.Delete then
+        cleanupAll()
+    elseif input.KeyCode == Enum.KeyCode.RightControl then
+        if UI and UI.screenGui and UI.screenGui.Parent then
+            UI.screenGui.Enabled = not UI.screenGui.Enabled
+        elseif screenGui and screenGui.Parent then
+            screenGui.Enabled = not screenGui.Enabled
+        end
+    end
+end)
+
+-- final
+createGUI()
+print("LVM Ultimate v3.8 (Stealth) loaded. Paste any console errors here if something fails.")
