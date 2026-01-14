@@ -10,6 +10,32 @@ local PlayerMouse = Player:GetMouse()
 
 local redzlib = {
 	Themes = {
+		NgotBand = {
+			["Color Hub 1"] = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(25, 25, 25)),
+				ColorSequenceKeypoint.new(0.50, Color3.fromRGB(32.5, 32.5, 32.5)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(25, 25, 25))
+			}),
+			["Color Hub 2"] = Color3.fromRGB(30, 30, 30),
+			["Color Stroke"] = Color3.fromRGB(40, 40, 40),
+			["Color Theme"] = Color3.fromRGB(88, 101, 242),
+			["Color Text"] = Color3.fromRGB(243, 243, 243),
+			["Color Dark Text"] = Color3.fromRGB(180, 180, 180),
+			["Image"] = "rbxassetid://133199532869700"
+		},
+		Tet = {
+			["Color Hub 1"] = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 215, 0)),
+				ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 140, 0)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 215, 0))
+			}),
+			["Color Hub 2"] = Color3.fromRGB(255, 215, 0),
+			["Color Stroke"] = Color3.fromRGB(255, 0, 0),
+			["Color Theme"] = Color3.fromRGB(255, 69, 0),
+			["Color Text"] = Color3.fromRGB(0, 0, 0),
+			["Color Dark Text"] = Color3.fromRGB(50, 50, 50),
+			["Image"] = "rbxassetid://85772312780607" -- Placeholder, thay bằng ID hình ảnh Tet nếu có
+		},
 		Darker = {
 			["Color Hub 1"] = ColorSequence.new({
 				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(25, 25, 25)),
@@ -285,6 +311,54 @@ local redzlib = {
 			["Color Theme"] = Color3.fromRGB(255, 0, 255),
 			["Color Text"] = Color3.fromRGB(245, 245, 245),
 			["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+		},
+		Spring = {
+			["Color Hub 1"] = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(144, 238, 144)),
+				ColorSequenceKeypoint.new(0.50, Color3.fromRGB(173, 216, 230)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(144, 238, 144))
+			}),
+			["Color Hub 2"] = Color3.fromRGB(152, 251, 152),
+			["Color Stroke"] = Color3.fromRGB(255, 182, 193),
+			["Color Theme"] = Color3.fromRGB(255, 20, 147),
+			["Color Text"] = Color3.fromRGB(0, 0, 0),
+			["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
+		},
+		Summer = {
+			["Color Hub 1"] = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 0)),
+				ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 165, 0)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 255, 0))
+			}),
+			["Color Hub 2"] = Color3.fromRGB(255, 215, 0),
+			["Color Stroke"] = Color3.fromRGB(0, 191, 255),
+			["Color Theme"] = Color3.fromRGB(0, 255, 255),
+			["Color Text"] = Color3.fromRGB(0, 0, 0),
+			["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
+		},
+		Autumn = {
+			["Color Hub 1"] = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 140, 0)),
+				ColorSequenceKeypoint.new(0.50, Color3.fromRGB(160, 82, 45)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 140, 0))
+			}),
+			["Color Hub 2"] = Color3.fromRGB(255, 69, 0),
+			["Color Stroke"] = Color3.fromRGB(139, 69, 19),
+			["Color Theme"] = Color3.fromRGB(255, 0, 0),
+			["Color Text"] = Color3.fromRGB(245, 245, 245),
+			["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+		},
+		Winter = {
+			["Color Hub 1"] = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(0.50, Color3.fromRGB(173, 216, 230)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 255, 255))
+			}),
+			["Color Hub 2"] = Color3.fromRGB(240, 248, 255),
+			["Color Stroke"] = Color3.fromRGB(192, 192, 192),
+			["Color Theme"] = Color3.fromRGB(70, 130, 180),
+			["Color Text"] = Color3.fromRGB(0, 0, 0),
+			["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
 		}
 	},
 	Info = {
@@ -293,7 +367,7 @@ local redzlib = {
 	Save = {
 		UISize = {550, 380},
 		TabSize = 160,
-		Theme = "Darker"
+		Theme = "NgotBand"
 	},
 	Settings = {},
 	Connection = {},
@@ -1669,9 +1743,15 @@ function redzlib:MakeWindow(Configs)
 		BackgroundTransparency = 0.03,
 		Name = "Hub"
 	}), "Main")
-	Make("Gradient", MainFrame, {
-		Rotation = 45
-	})MakeDrag(MainFrame)
+	if Theme.Image then
+		MainFrame.Image = Theme.Image
+		MainFrame.BackgroundTransparency = 1
+	else
+		Make("Gradient", MainFrame, {
+			Rotation = 45
+		})
+	end
+	MakeDrag(MainFrame)
 	
 	local MainCorner = Make("Corner", MainFrame)
 	
@@ -1716,6 +1796,32 @@ function redzlib:MakeWindow(Configs)
 			Name = "SubTitle"
 		}), "DarkText")
 	}), "Text")
+
+	local SearchFrame = Create("Frame", TopBar, {
+		Size = UDim2.new(0, 200, 0, 20),
+		Position = UDim2.new(1, -220, 0.5),
+		AnchorPoint = Vector2.new(1, 0.5),
+		BackgroundTransparency = 1
+	})
+
+	local SearchBox = InsertTheme(Create("TextBox", SearchFrame, {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundColor3 = Theme["Color Hub 2"],
+		Text = "",
+		PlaceholderText = "Tìm kiếm...",
+		TextSize = 10,
+		TextColor3 = Theme["Color Text"],
+		Font = Enum.Font.Gotham,
+		ClearTextOnFocus = false
+	}), "Frame")Make("Corner", SearchBox, UDim.new(0, 4))Make("Stroke", SearchBox)
+
+	local SearchIcon = Create("ImageLabel", SearchFrame, {
+		Size = UDim2.new(0, 14, 0, 14),
+		Position = UDim2.new(0, -18, 0.5),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Image = "rbxassetid://10734943674",
+		BackgroundTransparency = 1
+	})
 	
 	local MainScroll = InsertTheme(Create("ScrollingFrame", Components, {
 		Size = UDim2.new(0, redzlib.Save.TabSize, 1, -TopBar.Size.Y.Offset),
@@ -1818,6 +1924,30 @@ function redzlib:MakeWindow(Configs)
 	
 	local Minimized, SaveSize, WaitClick
 	local Window, FirstTab = {}, false
+	local SearchQuery = ""
+
+	local function UpdateSearch()
+		for _,Tab in pairs(redzlib.Tabs) do
+			local TabVisible = Tab.TabInfo.Name:lower():find(SearchQuery) or SearchQuery == ""
+			local HasMatchingOption = false
+			for _,Option in pairs(Tab.Cont:GetChildren()) do
+				if Option:IsA("Frame") and Option.Name == "Option" then
+					local TitleLabel = Option:FindFirstChildOfClass("TextLabel")
+					if TitleLabel then
+						local Match = TitleLabel.Text:lower():find(SearchQuery) or SearchQuery == ""
+						Option.Visible = Match
+						if Match then HasMatchingOption = true end
+					end
+				end
+			end
+			Tab.func:Visible(TabVisible or HasMatchingOption)
+		end
+	end
+
+	SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		SearchQuery = SearchBox.Text:lower()
+		UpdateSearch()
+	end)
 	function Window:CloseBtn()
 		local Dialog = Window:Dialog({
 			Title = "Close",
