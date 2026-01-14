@@ -2163,20 +2163,17 @@ function redzlib:MakeWindow(Configs)
 			if Container.Parent then return end
 			for _,Frame in pairs(ContainerList) do
 				if Frame:IsA("ScrollingFrame") and Frame ~= Container then
-					CreateTween({Frame, "Size", UDim2.new(1, 0, 0, 0), 0.3})
-					CreateTween({Frame, "BackgroundTransparency", 1, 0.3, function() Frame.Parent = nil end})
+					Frame.Parent = nil
 				end
 			end
 			Container.Parent = Containers
-			Container.Size = UDim2.new(1, 0, 0, 0)
-			Container.BackgroundTransparency = 1
+			Container.Size = UDim2.new(1, 0, 1, 150)
 			table.foreach(redzlib.Tabs, function(_,Tab)
 				if Tab.Cont ~= Container then
 					Tab.func:Disable()
 				end
 			end)
 			CreateTween({Container, "Size", UDim2.new(1, 0, 1, 0), 0.3})
-			CreateTween({Container, "BackgroundTransparency", 0, 0.3})
 			CreateTween({LabelTitle, "TextTransparency", 0, 0.35})
 			CreateTween({LabelIcon, "ImageTransparency", 0, 0.35})
 			CreateTween({Selected, "Size", UDim2.new(0, 4, 0, 13), 0.35})
@@ -2190,8 +2187,7 @@ function redzlib:MakeWindow(Configs)
 		Tab.Cont = Container
 		
 		function Tab:Disable()
-			CreateTween({Container, "Size", UDim2.new(1, 0, 0, 0), 0.3})
-			CreateTween({Container, "BackgroundTransparency", 1, 0.3, function() Container.Parent = nil end})
+			Container.Parent = nil
 			CreateTween({LabelTitle, "TextTransparency", 0.3, 0.35})
 			CreateTween({LabelIcon, "ImageTransparency", 0.3, 0.35})
 			CreateTween({Selected, "Size", UDim2.new(0, 4, 0, 4), 0.35})
@@ -3033,7 +3029,7 @@ function redzlib:MakeWindow(Configs)
 		table.insert(ThemeOptions, Name)
 	end
 
-	local ThemeDropdown = SettingsTab:AddDropdown({
+	SettingsTab:AddDropdown({
 		Name = "Theme",
 		Options = ThemeOptions,
 		Default = redzlib.Save.Theme,
@@ -3042,23 +3038,13 @@ function redzlib:MakeWindow(Configs)
 		end
 	})
 
-	local ScaleDropdown = SettingsTab:AddDropdown({
+	SettingsTab:AddDropdown({
 		Name = "UI Scale",
 		Options = {"Small", "Normal", "Big"},
 		Default = "Normal",
 		Callback = function(Value)
 			local scales = {Small = 300, Normal = 450, Big = 600}
 			redzlib:SetScale(scales[Value])
-		end
-	})
-
-	SettingsTab:AddButton({
-		Name = "Reset to Default",
-		Callback = function()
-			redzlib:SetTheme("NgotBand")
-			redzlib:SetScale(450)
-			ThemeDropdown:Set("NgotBand")
-			ScaleDropdown:Set("Normal")
 		end
 	})
 
