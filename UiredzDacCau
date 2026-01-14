@@ -3033,7 +3033,7 @@ function redzlib:MakeWindow(Configs)
 		table.insert(ThemeOptions, Name)
 	end
 
-	SettingsTab:AddDropdown({
+	local ThemeDropdown = SettingsTab:AddDropdown({
 		Name = "Theme",
 		Options = ThemeOptions,
 		Default = redzlib.Save.Theme,
@@ -3042,13 +3042,13 @@ function redzlib:MakeWindow(Configs)
 		end
 	})
 
-	SettingsTab:AddSlider({
+	local ScaleDropdown = SettingsTab:AddDropdown({
 		Name = "UI Scale",
-		Min = 300,
-		Max = 2000,
-		Default = 450,
+		Options = {"Small", "Normal", "Big"},
+		Default = "Normal",
 		Callback = function(Value)
-			redzlib:SetScale(Value)
+			local scales = {Small = 300, Normal = 450, Big = 600}
+			redzlib:SetScale(scales[Value])
 		end
 	})
 
@@ -3057,6 +3057,8 @@ function redzlib:MakeWindow(Configs)
 		Callback = function()
 			redzlib:SetTheme("NgotBand")
 			redzlib:SetScale(450)
+			ThemeDropdown:Set("NgotBand")
+			ScaleDropdown:Set("Normal")
 		end
 	})
 
