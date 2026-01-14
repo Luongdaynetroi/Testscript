@@ -1689,7 +1689,7 @@ function redzlib:SetTheme(NewTheme)
 	SaveJson("redz library V5.json", redzlib.Save)
 	Theme = redzlib.Themes[NewTheme]
 	
-	Comnection:FireConnection("ThemeChanged", NewTheme)
+	Connection:FireConnection("ThemeChanged", NewTheme)
 	table.foreach(redzlib.Instances, function(_,Val)
 		if Val.Type == "Gradient" then
 			Val.Instance.Color = Theme["Color Hub 1"]
@@ -3043,7 +3043,7 @@ function redzlib:MakeWindow(Configs)
 		Options = {"Small", "Normal", "Big"},
 		Default = "Normal",
 		Callback = function(Value)
-			local scales = {Small = 300, Normal = 450, Big = 600}
+			local scales = {Small = 550, Normal = 450, Big = 350}
 			redzlib:SetScale(scales[Value])
 		end
 	})
