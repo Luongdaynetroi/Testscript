@@ -367,7 +367,7 @@ local redzlib = {
 	Save = {
 		UISize = {550, 380},
 		TabSize = 160,
-		Theme = "SunsetGlow"
+		Theme = "Tet"
 	},
 	Settings = {},
 	Connection = {},
@@ -3045,6 +3045,73 @@ function redzlib:MakeWindow(Configs)
 		Callback = function(Value)
 			local scales = {Small = 550, Normal = 450, Big = 350}
 			redzlib:SetScale(scales[Value])
+		end
+	})
+
+	SettingsTab:AddSection("Info")
+
+	SettingsTab:AddDiscordInvite({
+		Title = "Horizon | Dac Cau Hub",
+		Desc = "Join our discord community to receive information about the next updates and more!",
+		Logo = "rbxassetid://138072662094067",
+		Invite = "http://discord.gg/V9xq5t5UhM"
+	})
+
+	SettingsTab:AddButton({
+		Name = "TikTok Link",
+		Callback = function()
+			setclipboard("https://tiktok.com/@example")
+		end
+	})
+
+	SettingsTab:AddButton({
+		Name = "Facebook Link",
+		Callback = function()
+			setclipboard("https://facebook.com/example")
+		end
+	})
+
+	SettingsTab:AddSection("Executor Pc")
+
+	SettingsTab:AddButton({
+		Name = "Get Executor Solara(pc)",
+		Callback = function()
+			setclipboard("https://api.getsolara.gg/")
+		end
+	})
+
+	SettingsTab:AddButton({
+		Name = "Get Executor Velocity",
+		Callback = function()
+			setclipboard("https://realvelocity.xyz/")
+		end
+	})
+
+	SettingsTab:AddButton({
+		Name = "Get Executor Xeno(pc)",
+		Callback = function()
+			setclipboard("https://www.xeno.onl/")
+		end
+	})
+
+	SettingsTab:AddButton({
+		Name = "Get Executor Bunni(Pc)",
+		Callback = function()
+			setclipboard("https://wearedevs.net/d/Bunni")
+		end
+	})
+
+	SettingsTab:AddButton({
+		Name = "Get Executor Drift(pc)",
+		Callback = function()
+			setclipboard("https://wearedevs.net/d/Drift")
+		end
+	})
+
+	SettingsTab:AddButton({
+		Name = "Get Executor TNG",
+		Callback = function()
+			setclipboard("https://tngexploit.vercel.app/")
 		end
 	})
 
