@@ -367,7 +367,7 @@ local redzlib = {
 	Save = {
 		UISize = {550, 380},
 		TabSize = 160,
-		Theme = "Tet"
+		Theme = "Autumn"
 	},
 	Settings = {},
 	Connection = {},
@@ -1261,6 +1261,7 @@ local SetProps, SetChildren, InsertTheme, Create do
 				if rawget(decode, "UISize") then redzlib.Save["UISize"] = decode["UISize"] end
 				if rawget(decode, "TabSize") then redzlib.Save["TabSize"] = decode["TabSize"] end
 				if rawget(decode, "Theme") and VerifyTheme(decode["Theme"]) then redzlib.Save["Theme"] = decode["Theme"] end
+				if rawget(decode, "Scale") then redzlib.Save["Scale"] = decode["Scale"] end
 			end
 		end
 	end
@@ -1712,6 +1713,8 @@ end
 function redzlib:SetScale(NewScale)
 	NewScale = ViewportSize.Y / math.clamp(NewScale, 300, 2000)
 	UIScale, ScreenGui.Scale.Scale = NewScale, NewScale
+	redzlib.Save.Scale = NewScale
+	SaveJson("redz library V5.json", redzlib.Save)
 end
 
 function redzlib:MakeWindow(Configs)
@@ -1735,7 +1738,11 @@ function redzlib:MakeWindow(Configs)
 			end
 		end
 	end;LoadFile()
-	
+
+	if redzlib.Save.Scale then
+		redzlib:SetScale(redzlib.Save.Scale)
+	end
+
 	local UISizeX, UISizeY = unpack(redzlib.Save.UISize)
 	local MainFrame = InsertTheme(Create("ImageButton", ScreenGui, {
 		Size = UDim2.fromOffset(UISizeX, UISizeY),
@@ -2674,7 +2681,7 @@ function redzlib:MakeWindow(Configs)
 			function Dropdown:Visible(...) Funcs:ToggleVisible(Button, ...) end
 			function Dropdown:Destroy() Button:Destroy() end
 			function Dropdown:Callback(...) Funcs:InsertCallback(Callback, ...)(Selected) end
-			
+
 			function Dropdown:Add(...)
 				local NewOptions = {...}
 				if type(NewOptions[1]) == "table" then
@@ -2715,6 +2722,10 @@ function redzlib:MakeWindow(Configs)
 				elseif type(Val1) == "function" then
 					Callback = Val1
 				end
+			end
+			function Dropdown:SetSelected(Value)
+				Selected = Value
+				UpdateSelected()
 			end
 			return Dropdown
 		end
@@ -3029,12 +3040,13 @@ function redzlib:MakeWindow(Configs)
 		table.insert(ThemeOptions, Name)
 	end
 
-	SettingsTab:AddDropdown({
+	local ThemeDropdown = SettingsTab:AddDropdown({
 		Name = "Theme",
 		Options = ThemeOptions,
 		Default = redzlib.Save.Theme,
 		Callback = function(Value)
 			redzlib:SetTheme(Value)
+			ThemeDropdown:SetSelected(Value)
 		end
 	})
 
