@@ -367,7 +367,7 @@ local redzlib = {
 	Save = {
 		UISize = {550, 380},
 		TabSize = 160,
-		Theme = "NgotBand"
+		Theme = "Tet"
 	},
 	Settings = {},
 	Connection = {},
@@ -1796,32 +1796,6 @@ function redzlib:MakeWindow(Configs)
 			Name = "SubTitle"
 		}), "DarkText")
 	}), "Text")
-
-	local SearchFrame = Create("Frame", TopBar, {
-		Size = UDim2.new(0, 150, 0, 20),
-		Position = UDim2.new(1, -60, 0.5),
-		AnchorPoint = Vector2.new(1, 0.5),
-		BackgroundTransparency = 1
-	})
-
-	local SearchBox = InsertTheme(Create("TextBox", SearchFrame, {
-		Size = UDim2.new(1, 0, 1, 0),
-		BackgroundColor3 = Theme["Color Hub 2"],
-		Text = "",
-		PlaceholderText = "Tìm kiếm...",
-		TextSize = 10,
-		TextColor3 = Theme["Color Text"],
-		Font = Enum.Font.Gotham,
-		ClearTextOnFocus = false
-	}), "Frame")Make("Corner", SearchBox, UDim.new(0, 4))Make("Stroke", SearchBox)
-
-	local SearchIcon = Create("ImageLabel", SearchFrame, {
-		Size = UDim2.new(0, 14, 0, 14),
-		Position = UDim2.new(0, -18, 0.5),
-		AnchorPoint = Vector2.new(1, 0.5),
-		Image = "rbxassetid://10734943674",
-		BackgroundTransparency = 1
-	})
 	
 	local MainScroll = InsertTheme(Create("ScrollingFrame", Components, {
 		Size = UDim2.new(0, redzlib.Save.TabSize, 1, -TopBar.Size.Y.Offset),
@@ -1924,35 +1898,6 @@ function redzlib:MakeWindow(Configs)
 	
 	local Minimized, SaveSize, WaitClick
 	local Window, FirstTab = {}, false
-	local SearchQuery = ""
-
-	local function UpdateSearch()
-		for _,Tab in pairs(redzlib.Tabs) do
-			local TabVisible = Tab.TabInfo.Name:lower():find(SearchQuery) or SearchQuery == ""
-			local HasMatchingOption = false
-			for _,Option in pairs(Tab.Cont:GetChildren()) do
-				if Option:IsA("Frame") and Option.Name == "Option" then
-					local Match = false
-					for _,Descendant in pairs(Option:GetDescendants()) do
-						if Descendant:IsA("TextLabel") or Descendant:IsA("TextButton") then
-							if Descendant.Text:lower():find(SearchQuery) then
-								Match = true
-								break
-							end
-						end
-					end
-					Option.Visible = Match or SearchQuery == ""
-					if Match then HasMatchingOption = true end
-				end
-			end
-			Tab.func:Visible(TabVisible or HasMatchingOption)
-		end
-	end
-
-	SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-		SearchQuery = SearchBox.Text:lower()
-		UpdateSearch()
-	end)
 	function Window:CloseBtn()
 		local Dialog = Window:Dialog({
 			Title = "Close",
@@ -2218,17 +2163,20 @@ function redzlib:MakeWindow(Configs)
 			if Container.Parent then return end
 			for _,Frame in pairs(ContainerList) do
 				if Frame:IsA("ScrollingFrame") and Frame ~= Container then
-					Frame.Parent = nil
+					CreateTween({Frame, "Size", UDim2.new(1, 0, 0, 0), 0.3})
+					CreateTween({Frame, "BackgroundTransparency", 1, 0.3, function() Frame.Parent = nil end})
 				end
 			end
 			Container.Parent = Containers
-			Container.Size = UDim2.new(1, 0, 1, 150)
+			Container.Size = UDim2.new(1, 0, 0, 0)
+			Container.BackgroundTransparency = 1
 			table.foreach(redzlib.Tabs, function(_,Tab)
 				if Tab.Cont ~= Container then
 					Tab.func:Disable()
 				end
 			end)
 			CreateTween({Container, "Size", UDim2.new(1, 0, 1, 0), 0.3})
+			CreateTween({Container, "BackgroundTransparency", 0, 0.3})
 			CreateTween({LabelTitle, "TextTransparency", 0, 0.35})
 			CreateTween({LabelIcon, "ImageTransparency", 0, 0.35})
 			CreateTween({Selected, "Size", UDim2.new(0, 4, 0, 13), 0.35})
@@ -2242,7 +2190,8 @@ function redzlib:MakeWindow(Configs)
 		Tab.Cont = Container
 		
 		function Tab:Disable()
-			Container.Parent = nil
+			CreateTween({Container, "Size", UDim2.new(1, 0, 0, 0), 0.3})
+			CreateTween({Container, "BackgroundTransparency", 1, 0.3, function() Container.Parent = nil end})
 			CreateTween({LabelTitle, "TextTransparency", 0.3, 0.35})
 			CreateTween({LabelIcon, "ImageTransparency", 0.3, 0.35})
 			CreateTween({Selected, "Size", UDim2.new(0, 4, 0, 4), 0.35})
@@ -3073,6 +3022,44 @@ function redzlib:MakeWindow(Configs)
 	
 	CloseButton.Activated:Connect(Window.CloseBtn)
 	MinimizeButton.Activated:Connect(Window.MinimizeBtn)
+
+	local SettingsTab = Window:MakeTab({
+		Title = "Settings",
+		Icon = "settings"
+	})
+
+	local ThemeOptions = {}
+	for Name,_ in pairs(redzlib.Themes) do
+		table.insert(ThemeOptions, Name)
+	end
+
+	SettingsTab:AddDropdown({
+		Name = "Theme",
+		Options = ThemeOptions,
+		Default = redzlib.Save.Theme,
+		Callback = function(Value)
+			redzlib:SetTheme(Value)
+		end
+	})
+
+	SettingsTab:AddSlider({
+		Name = "UI Scale",
+		Min = 300,
+		Max = 2000,
+		Default = 450,
+		Callback = function(Value)
+			redzlib:SetScale(Value)
+		end
+	})
+
+	SettingsTab:AddButton({
+		Name = "Reset to Default",
+		Callback = function()
+			redzlib:SetTheme("NgotBand")
+			redzlib:SetScale(450)
+		end
+	})
+
 	return Window
 end
 
