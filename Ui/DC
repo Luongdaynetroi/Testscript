@@ -13,15 +13,20 @@ local Player = Players.LocalPlayer
 
 local DClib = {}
 
--- Theme
-DClib.Theme = "Dark"
+-- Theme đẹp hơn
+DClib.Theme = "Purple"
 DClib.Themes = {
-    Dark = {
-        Background = Color3.fromRGB(45, 45, 45),
-        Stroke = Color3.fromRGB(65, 65, 65),
-        Text = Color3.fromRGB(245, 245, 245),
-        Text2 = Color3.fromRGB(190, 190, 190),
-        Accent = Color3.fromRGB(88, 101, 242)
+    Purple = {
+        Background = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 30, 80)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(45, 20, 60))
+        }),
+        BackgroundSolid = Color3.fromRGB(55, 25, 70),
+        Stroke = Color3.fromRGB(100, 60, 130),
+        Text = Color3.fromRGB(255, 255, 255),
+        Text2 = Color3.fromRGB(200, 180, 220),
+        Accent = Color3.fromRGB(180, 100, 255),
+        AccentHover = Color3.fromRGB(210, 130, 255)
     }
 }
 
@@ -52,7 +57,14 @@ local function MakeStroke(parent, color, thickness)
 end
 
 local function Tween(instance, properties, duration)
-    local tweenInfo = TweenInfo.new(duration or 0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenInfo = TweenInfo.new(duration or 0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(instance, tweenInfo, properties)
+    tween:Play()
+    return tween
+end
+
+local function QuickTween(instance, properties)
+    local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
     local tween = TweenService:Create(instance, tweenInfo, properties)
     tween:Play()
     return tween
@@ -75,14 +87,21 @@ function DClib:MakeWindow(config)
     local MainFrame = Create("Frame", {
         Name = "MainFrame",
         Parent = ScreenGui,
-        Size = UDim2.new(0, 400, 0, 400),
-        Position = UDim2.new(0.5, -200, 0.5, -200),
-        BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
+        Size = UDim2.new(0, 420, 0, 420),
+        Position = UDim2.new(0.5, -210, 0.5, -210),
+        BackgroundColor3 = DClib.Themes[DClib.Theme].BackgroundSolid,
         BorderSizePixel = 0
     })
     
+    -- Gradient background
+    local Gradient = Create("UIGradient", {
+        Parent = MainFrame,
+        Color = DClib.Themes[DClib.Theme].Background,
+        Rotation = 45
+    })
+    
     -- BO TRÒN HOÀN TOÀN (corner radius lớn)
-    MakeCorner(MainFrame, 200) -- Lớn hơn size để thành hình tròn
+    MakeCorner(MainFrame, 210) -- Lớn hơn size để thành hình tròn
     MakeStroke(MainFrame, DClib.Themes[DClib.Theme].Stroke, 2)
     
     -- Title Bar
@@ -153,12 +172,12 @@ function DClib:MakeWindow(config)
     local minimized = false
     MinimizeBtn.MouseButton1Click:Connect(function()
         if minimized then
-            Tween(MainFrame, {Size = UDim2.new(0, 400, 0, 400)}, 0.25)
-            Tween(MainFrame, {Position = UDim2.new(0.5, -200, 0.5, -200)}, 0.25)
+            Tween(MainFrame, {Size = UDim2.new(0, 420, 0, 420)}, 0.4)
+            Tween(MainFrame, {Position = UDim2.new(0.5, -210, 0.5, -210)}, 0.4)
             minimized = false
         else
-            Tween(MainFrame, {Size = UDim2.new(0, 400, 0, 60)}, 0.25)
-            Tween(MainFrame, {Position = UDim2.new(0.5, -200, 0.5, -30)}, 0.25)
+            Tween(MainFrame, {Size = UDim2.new(0, 420, 0, 65)}, 0.4)
+            Tween(MainFrame, {Position = UDim2.new(0.5, -210, 0.5, -32)}, 0.4)
             minimized = true
         end
     end)
@@ -251,8 +270,8 @@ function DClib:MakeWindow(config)
         local TabBtn = Create("TextButton", {
             Name = "TabBtn_" .. tabName,
             Parent = TabScroll,
-            Size = UDim2.new(0, 70, 0, 30),
-            BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
+            Size = UDim2.new(0, 65, 0, 28),
+            BackgroundColor3 = Color3.fromRGB(80, 50, 100),
             Text = "",
             AutoButtonColor = true,
             BorderSizePixel = 0
@@ -260,15 +279,14 @@ function DClib:MakeWindow(config)
         
         -- Bo tròn tab button
         MakeCorner(TabBtn, 8)
-        MakeStroke(TabBtn, DClib.Themes[DClib.Theme].Stroke, 1)
         
         -- Tab icon (nếu có)
         if tabIcon ~= "" then
             local Icon = Create("ImageLabel", {
                 Name = "TabIcon",
                 Parent = TabBtn,
-                Size = UDim2.new(0, 16, 0, 16),
-                Position = UDim2.new(0.5, -8, 0.5, -8),
+                Size = UDim2.new(0, 14, 0, 14),
+                Position = UDim2.new(0.5, -7, 0.5, -7),
                 BackgroundTransparency = 1,
                 Image = tabIcon,
                 ImageColor3 = DClib.Themes[DClib.Theme].Text
@@ -285,9 +303,18 @@ function DClib:MakeWindow(config)
             Text = tabName,
             TextColor3 = DClib.Themes[DClib.Theme].Text,
             TextSize = 10,
-            Font = Enum.Font.GothamMedium,
+            Font = Enum.Font.GothamBold,
             TextXAlignment = "Center"
         })
+        
+        -- Hover effects
+        TabBtn.MouseEnter:Connect(function()
+            QuickTween(TabBtn, {BackgroundColor3 = DClib.Themes[DClib.Theme].Accent})
+        end)
+        
+        TabBtn.MouseLeave:Connect(function()
+            QuickTween(TabBtn, {BackgroundColor3 = Color3.fromRGB(80, 50, 100)})
+        end)
         
         -- Tab Content Panel (BO TRÒN)
         local Panel = Create("Frame", {
@@ -375,35 +402,48 @@ function DClib:MakeWindow(config)
             local Btn = Create("TextButton", {
                 Name = "Button",
                 Parent = PanelScroll,
-                Size = UDim2.new(1, 0, 0, 35),
-                BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
+                Size = UDim2.new(1, 0, 0, 38),
+                BackgroundColor3 = DClib.Themes[DClib.Theme].Accent,
                 Text = "",
                 AutoButtonColor = true,
                 BorderSizePixel = 0
             })
             
-            MakeCorner(Btn, 6)
-            MakeStroke(Btn, DClib.Themes[DClib.Theme].Stroke, 1)
+            MakeCorner(Btn, 10)
             
             local Label = Create("TextLabel", {
                 Name = "Label",
                 Parent = Btn,
                 Size = UDim2.new(1, -20, 1, 0),
-                Position = UDim2.new(0, 10, 0, 0),
+                Position = UDim2.new(0, 15, 0, 0),
                 BackgroundTransparency = 1,
                 Text = btnName,
-                TextColor3 = DClib.Themes[DClib.Theme].Text,
+                TextColor3 = Color3.fromRGB(255, 255, 255),
                 TextSize = 13,
-                Font = Enum.Font.GothamMedium,
+                Font = Enum.Font.GothamBold,
                 TextXAlignment = "Left"
             })
             
+            -- Shine effect
+            local Shine = Create("ImageLabel", {
+                Name = "Shine",
+                Parent = Btn,
+                Size = UDim2.new(1, 0, 0.5, 0),
+                Position = UDim2.new(0, 0, 0, 0),
+                BackgroundTransparency = 1,
+                Image = "rbxassetid://4912487335",
+                ImageTransparency = 0.8,
+                ZIndex = 2
+            })
+            
             Btn.MouseEnter:Connect(function()
-                Tween(Btn, {BackgroundTransparency = 0.2}, 0.1)
+                QuickTween(Btn, {BackgroundColor3 = DClib.Themes[DClib.Theme].AccentHover})
+                QuickTween(Shine, {ImageTransparency = 0.5})
             end)
             
             Btn.MouseLeave:Connect(function()
-                Tween(Btn, {BackgroundTransparency = 0}, 0.1)
+                QuickTween(Btn, {BackgroundColor3 = DClib.Themes[DClib.Theme].Accent})
+                QuickTween(Shine, {ImageTransparency = 0.8})
             end)
             
             Btn.MouseButton1Click:Connect(callback)
@@ -438,31 +478,33 @@ function DClib:MakeWindow(config)
             local ToggleBtn = Create("TextButton", {
                 Name = "ToggleBtn",
                 Parent = Toggle,
-                Size = UDim2.new(0, 40, 0, 20),
-                Position = UDim2.new(1, -45, 0.5, -10),
-                BackgroundColor3 = DClib.Themes[DClib.Theme].Stroke,
+                Size = UDim2.new(0, 48, 0, 24),
+                Position = UDim2.new(1, -54, 0.5, -12),
+                BackgroundColor3 = Color3.fromRGB(60, 40, 80),
                 Text = "",
                 AutoButtonColor = true,
                 BorderSizePixel = 0
             })
             
-            MakeCorner(ToggleBtn, 10)
+            MakeCorner(ToggleBtn, 12)
             
             local Knob = Create("Frame", {
                 Name = "Knob",
                 Parent = ToggleBtn,
-                Size = UDim2.new(0, 16, 0, 16),
-                Position = UDim2.new(0, 2, 0.5, -8),
-                BackgroundColor3 = DClib.Themes[DClib.Theme].Accent
+                Size = UDim2.new(0, 20, 0, 20),
+                Position = UDim2.new(0, 2, 0.5, -10),
+                BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             })
             
-            MakeCorner(Knob, 8)
+            MakeCorner(Knob, 10)
             
             local function SetValue(val)
                 if val then
-                    Tween(Knob, {Position = UDim2.new(1, -18, 0.5, -8)}, 0.15)
+                    QuickTween(Knob, {Position = UDim2.new(1, -22, 0.5, -10)})
+                    QuickTween(Knob, {BackgroundColor3 = DClib.Themes[DClib.Theme].Accent})
                 else
-                    Tween(Knob, {Position = UDim2.new(0, 2, 0.5, -8)}, 0.15)
+                    QuickTween(Knob, {Position = UDim2.new(0, 2, 0.5, -10)})
+                    QuickTween(Knob, {BackgroundColor3 = Color3.fromRGB(255, 255, 255)})
                 end
             end
             
