@@ -322,7 +322,7 @@ function DClib:MakeWindow(config)
             Parent = Content,
             Size = UDim2.new(1, 0, 1, 0),
             Visible = false,
-            BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
+            BackgroundColor3 = DClib.Themes[DClib.Theme].BackgroundSolid,
             ClipsDescendants = true
         })
         
@@ -622,36 +622,35 @@ function DClib:MakeWindow(config)
         local MinBtn = Create("ImageButton", {
             Name = "CustomMinimizeButton",
             Parent = TitleBar,
-            Size = buttonConfig.Size or UDim2.new(0, 30, 0, 30),
-            Position = buttonConfig.Position or UDim2.new(1, -78, 0.5, -15),
-            BackgroundColor3 = buttonConfig.BackgroundColor3 or DClib.Themes[DClib.Theme].Background,
-            BackgroundTransparency = buttonConfig.BackgroundTransparency or 0,
+            Size = buttonConfig.Size or UDim2.new(0, 28, 0, 28),
+            Position = buttonConfig.Position or UDim2.new(1, -76, 0.5, -14),
+            BackgroundColor3 = buttonConfig.BackgroundColor3 or DClib.Themes[DClib.Theme].Accent,
+            BackgroundTransparency = 0,
             Image = buttonConfig.Image or "rbxassetid://125965818173870",
             AutoButtonColor = false
         })
         
         -- Bo tròn button
         MakeCorner(MinBtn, cornerConfig.CornerRadius or 6)
-        MakeStroke(MinBtn, strokeConfig.Color or DClib.Themes[DClib.Theme].Accent, strokeConfig.Thickness or 1)
         
         -- Hover effects
         MinBtn.MouseEnter:Connect(function()
-            Tween(MinBtn, {BackgroundTransparency = 0.2}, 0.15)
+            QuickTween(MinBtn, {BackgroundColor3 = DClib.Themes[DClib.Theme].AccentHover})
         end)
         
         MinBtn.MouseLeave:Connect(function()
-            Tween(MinBtn, {BackgroundTransparency = buttonConfig.BackgroundTransparency or 0}, 0.15)
+            QuickTween(MinBtn, {BackgroundColor3 = DClib.Themes[DClib.Theme].Accent})
         end)
         
         -- Toggle minimize
         MinBtn.MouseButton1Click:Connect(function()
             if minimized then
-                Tween(MainFrame, {Size = UDim2.new(0, 400, 0, 400)}, 0.25)
-                Tween(MainFrame, {Position = UDim2.new(0.5, -200, 0.5, -200)}, 0.25)
+                Tween(MainFrame, {Size = UDim2.new(0, 420, 0, 420)}, 0.4)
+                Tween(MainFrame, {Position = UDim2.new(0.5, -210, 0.5, -210)}, 0.4)
                 minimized = false
             else
-                Tween(MainFrame, {Size = UDim2.new(0, 400, 0, 60)}, 0.25)
-                Tween(MainFrame, {Position = UDim2.new(0.5, -200, 0.5, -30)}, 0.25)
+                Tween(MainFrame, {Size = UDim2.new(0, 420, 0, 65)}, 0.4)
+                Tween(MainFrame, {Position = UDim2.new(0.5, -210, 0.5, -32)}, 0.4)
                 minimized = true
             end
         end)
