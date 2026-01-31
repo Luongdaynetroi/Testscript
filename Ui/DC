@@ -10,9 +10,10 @@ local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 
 local Player = Players.LocalPlayer
+
 local DClib = {}
 
--- Theme mặc định
+-- Theme
 DClib.Theme = "Dark"
 DClib.Themes = {
     Dark = {
@@ -24,7 +25,7 @@ DClib.Themes = {
     }
 }
 
--- Hàm tạo instance
+-- Helper function
 local function Create(instanceType, properties)
     local instance = Instance.new(instanceType)
     for prop, value in pairs(properties or {}) do
@@ -33,7 +34,6 @@ local function Create(instanceType, properties)
     return instance
 end
 
--- Tạo corner tròn
 local function MakeCorner(parent, radius)
     local corner = Create("UICorner", {
         Parent = parent,
@@ -42,7 +42,6 @@ local function MakeCorner(parent, radius)
     return corner
 end
 
--- Tạo stroke
 local function MakeStroke(parent, color, thickness)
     local stroke = Create("UIStroke", {
         Parent = parent,
@@ -52,7 +51,6 @@ local function MakeStroke(parent, color, thickness)
     return stroke
 end
 
--- Hàm tween
 local function Tween(instance, properties, duration)
     local tweenInfo = TweenInfo.new(duration or 0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     local tween = TweenService:Create(instance, tweenInfo, properties)
@@ -60,7 +58,7 @@ local function Tween(instance, properties, duration)
     return tween
 end
 
--- Tạo Window
+-- MakeWindow function
 function DClib:MakeWindow(config)
     local name = config.Name or "DClib"
     local subtitle = config.SubTitle or ""
@@ -73,19 +71,19 @@ function DClib:MakeWindow(config)
         IgnoreGuiInset = true
     })
     
-    -- Main Frame (tròn)
+    -- Main Frame (HÌNH TRÒN HOÀN TOÀN)
     local MainFrame = Create("Frame", {
         Name = "MainFrame",
         Parent = ScreenGui,
-        Size = UDim2.new(0, 550, 0, 380),
-        Position = UDim2.new(0.5, -275, 0.5, -190),
+        Size = UDim2.new(0, 400, 0, 400),
+        Position = UDim2.new(0.5, -200, 0.5, -200),
         BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
         BorderSizePixel = 0
     })
     
-    r tròn cho main frame
-    MakeCorner(MainFrame, 12)
-    MakeStroke(MainFrame, DClib.Themes[DClib.Theme].Stroke, 1)
+    -- BO TRÒN HOÀN TOÀN (corner radius lớn)
+    MakeCorner(MainFrame, 200) -- Lớn hơn size để thành hình tròn
+    MakeStroke(MainFrame, DClib.Themes[DClib.Theme].Stroke, 2)
     
     -- Title Bar
     local TitleBar = Create("Frame", {
@@ -95,6 +93,7 @@ function DClib:MakeWindow(config)
         BackgroundTransparency = 1
     })
     
+    -- Title Label
     local TitleLabel = Create("TextLabel", {
         Name = "Title",
         Parent = TitleBar,
@@ -108,6 +107,7 @@ function DClib:MakeWindow(config)
         TextSize = 14
     })
     
+    -- SubTitle Label
     local SubTitleLabel = Create("TextLabel", {
         Name = "SubTitle",
         Parent = TitleBar,
@@ -121,7 +121,7 @@ function DClib:MakeWindow(config)
         TextSize = 10
     })
     
-    -- Close Button
+    -- Close Button (TRÒN VỚI CORNER RADIUS 8)
     local CloseBtn = Create("ImageButton", {
         Name = "CloseButton",
         Parent = TitleBar,
@@ -139,7 +139,7 @@ function DClib:MakeWindow(config)
         ScreenGui:Destroy()
     end)
     
-    -- Minimize Button
+    -- Minimize Button (TRÒN VỚI CORNER RADIUS 6)
     local MinimizeBtn = Create("ImageButton", {
         Name = "MinimizeButton",
         Parent = TitleBar,
@@ -153,37 +153,30 @@ function DClib:MakeWindow(config)
     local minimized = false
     MinimizeBtn.MouseButton1Click:Connect(function()
         if minimized then
-            Tween(MainFrame, {Size = UDim2.new(0, 550, 0, 380)}, 0.25)
+            Tween(MainFrame, {Size = UDim2.new(0, 400, 0, 400)}, 0.25)
+            Tween(MainFrame, {Position = UDim2.new(0.5, -200, 0.5, -200)}, 0.25)
             minimized = false
         else
-            Tween(MainFrame, {Size = UDim2.new(0, 550, 0, 35)}, 0.25)
+            Tween(MainFrame, {Size = UDim2.new(0, 400, 0, 60)}, 0.25)
+            Tween(MainFrame, {Position = UDim2.new(0.5, -200, 0.5, -30)}, 0.25)
             minimized = true
         end
     end)
     
-    -- Content Container
-    local Content = Create("Frame", {
-        Name = "Content",
-        Parent = MainFrame,
-        Size = UDim2.new(1, 0, 1, -35),
-        Position = UDim2.new(0, 0, 0, 35),
-        BackgroundTransparency = 1,
-        ClipsDescendants = true
-    })
-    
-    -- Tab Area
+    -- Tab Area (phía trên content)
     local TabArea = Create("Frame", {
         Name = "TabArea",
-        Parent = Content,
-        Size = UDim2.new(1, 0, 0, 45),
+        Parent = MainFrame,
+        Size = UDim2.new(1, -40, 0, 45),
+        Position = UDim2.new(0, 20, 0, 45),
         BackgroundTransparency = 1
     })
     
+    -- Tab Scroll (horizontal)
     local TabScroll = Create("ScrollingFrame", {
         Name = "TabScroll",
         Parent = TabArea,
-        Size = UDim2.new(1, -20, 1, 0),
-        Position = UDim2.new(0, 10, 0, 0),
+        Size = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1,
         ScrollBarThickness = 0,
         ScrollingDirection = "X",
@@ -198,37 +191,14 @@ function DClib:MakeWindow(config)
         HorizontalAlignment = "Center"
     })
     
-    -- Main Content
-    local MainContent = Create("Frame", {
-        Name = "MainContent",
-        Parent = Content,
-        Size = UDim2.new(1, -20, 1, -55),
-        Position = UDim2.new(0, 10, 0, 55),
-        BackgroundTransparency = 1
-    })
-    
-    local ContentScroll = Create("ScrollingFrame", {
-        Name = "ContentScroll",
-        Parent = MainContent,
-        Size = UDim2.new(1, 0, 1, 0),
+    -- Content Container (chứa tab panels)
+    local Content = Create("Frame", {
+        Name = "Content",
+        Parent = MainFrame,
+        Size = UDim2.new(1, -40, 1, -100),
+        Position = UDim2.new(0, 20, 0, 100),
         BackgroundTransparency = 1,
-        ScrollBarThickness = 4,
-        ScrollBarImageColor3 = DClib.Themes[DClib.Theme].Accent,
-        AutomaticCanvasSize = "Y"
-    })
-    
-    local ContentLayout = Create("UIListLayout", {
-        Parent = ContentScroll,
-        Padding = UDim.new(0, 10),
-        SortOrder = "LayoutOrder"
-    })
-    
-    local Padding = Create("UIPadding", {
-        Parent = ContentScroll,
-        PaddingLeft = UDim.new(0, 10),
-        PaddingRight = UDim.new(0, 10),
-        PaddingTop = UDim.new(0, 10),
-        PaddingBottom = UDim.new(0, 10)
+        ClipsDescendants = true
     })
     
     -- Drag functionality
@@ -266,74 +236,48 @@ function DClib:MakeWindow(config)
     end)
     
     -- Tab storage
-    local tabs = {}
+    local tabButtons = {}
     local tabPanels = {}
     
+    -- Return Window object
     local Window = {}
     
-    -- Add Minimize Button (custom)
-    function Window:AddMinimizeButton(config)
-        local btn = Create("ImageButton", {
-            Name = "CustomMinimize",
-            Parent = TitleBar,
-            Size = config.Button.Size or UDim2.new(0, 30, 0, 30),
-            Position = config.Button.Position or UDim2.new(1, -78, 0.5, -15),
-            BackgroundColor3 = config.Button.BackgroundColor3 or DClib.Themes[DClib.Theme].Background,
-            Image = config.Button.Image or "rbxassetid://125965818173870",
-            AutoButtonColor = false
-        })
-        
-        MakeCorner(btn, config.Corner.CornerRadius or 6)
-        MakeStroke(btn, config.Stroke.Color or DClib.Themes[DClib.Theme].Accent, config.Stroke.Thickness or 1)
-        
-        btn.MouseButton1Click:Connect(function()
-            if minimized then
-                Tween(MainFrame, {Size = UDim2.new(0, 550, 0, 380)}, 0.25)
-                minimized = false
-            else
-                Tween(MainFrame, {Size = UDim2.new(0, 550, 0, 35)}, 0.25)
-                minimized = true
-            end
-        end)
-        
-        return btn
-    end
-    
-    -- Add Tab
+    -- AddTab function
     function Window:AddTab(config)
         local tabName = config.Name or "Tab"
         local tabIcon = config.Icon or ""
         
-        -- Tab Button (tròn)
+        -- Tab Button (BO TRÒN)
         local TabBtn = Create("TextButton", {
             Name = "TabBtn_" .. tabName,
             Parent = TabScroll,
-            Size = UDim2.new(0, 75, 0, 32),
+            Size = UDim2.new(0, 70, 0, 30),
             BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
             Text = "",
             AutoButtonColor = true,
             BorderSizePixel = 0
         })
         
+        -- Bo tròn tab button
         MakeCorner(TabBtn, 8)
         MakeStroke(TabBtn, DClib.Themes[DClib.Theme].Stroke, 1)
         
-        -- Icon
+        -- Tab icon (nếu có)
         if tabIcon ~= "" then
             local Icon = Create("ImageLabel", {
-                Name = "Icon",
+                Name = "TabIcon",
                 Parent = TabBtn,
-                Size = UDim2.new(0, 18, 0, 18),
-                Position = UDim2.new(0.5, -9, 0.5, -10),
+                Size = UDim2.new(0, 16, 0, 16),
+                Position = UDim2.new(0.5, -8, 0.5, -8),
                 BackgroundTransparency = 1,
                 Image = tabIcon,
                 ImageColor3 = DClib.Themes[DClib.Theme].Text
             })
         end
         
-        -- Label
-        local Label = Create("TextLabel", {
-            Name = "Label",
+        -- Tab Label
+        local TabLabel = Create("TextLabel", {
+            Name = "TabLabel",
             Parent = TabBtn,
             Size = UDim2.new(1, 0, 0, 12),
             Position = UDim2.new(0, 0, 1, -12),
@@ -345,11 +289,11 @@ function DClib:MakeWindow(config)
             TextXAlignment = "Center"
         })
         
-        -- Content Panel (tròn)
+        -- Tab Content Panel (BO TRÒN)
         local Panel = Create("Frame", {
             Name = "Panel_" .. tabName,
-            Parent = ContentScroll,
-            Size = UDim2.new(1, 0, 0, 50),
+            Parent = Content,
+            Size = UDim2.new(1, 0, 1, 0),
             Visible = false,
             BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
             ClipsDescendants = true
@@ -358,6 +302,7 @@ function DClib:MakeWindow(config)
         MakeCorner(Panel, 8)
         MakeStroke(Panel, DClib.Themes[DClib.Theme].Stroke, 1)
         
+        -- Panel Scroll
         local PanelScroll = Create("ScrollingFrame", {
             Name = "PanelScroll",
             Parent = Panel,
@@ -383,25 +328,24 @@ function DClib:MakeWindow(config)
             PaddingBottom = UDim.new(0, 8)
         })
         
-        table.insert(tabs, TabBtn)
+        -- Lưu tab
+        table.insert(tabButtons, TabBtn)
         table.insert(tabPanels, Panel)
         
         -- Click handler
         TabBtn.MouseButton1Click:Connect(function()
-            -- Hide all panels
+            -- Ẩn tất cả panels
             for _, p in ipairs(tabPanels) do
                 p.Visible = false
             end
-            
-            -- Show this panel
+            -- Hiện panel này
             Panel.Visible = true
-            Panel.Size = UDim2.new(1, 0, 0, 100)
-            Tween(Panel, {Size = UDim2.new(1, 0, 1, -4)}, 0.2)
         end)
         
-        local TabObj = {}
+        -- Return Tab object
+        local Tab = {}
         
-        function TabObj:AddSection(text)
+        function Tab:AddSection(text)
             local Section = Create("Frame", {
                 Name = "Section",
                 Parent = PanelScroll,
@@ -424,7 +368,7 @@ function DClib:MakeWindow(config)
             return Section
         end
         
-        function TabObj:AddButton(config)
+        function Tab:AddButton(config)
             local btnName = config.Name or "Button"
             local callback = config.Callback or function() end
             
@@ -441,7 +385,7 @@ function DClib:MakeWindow(config)
             MakeCorner(Btn, 6)
             MakeStroke(Btn, DClib.Themes[DClib.Theme].Stroke, 1)
             
-            local BtnLabel = Create("TextLabel", {
+            local Label = Create("TextLabel", {
                 Name = "Label",
                 Parent = Btn,
                 Size = UDim2.new(1, -20, 1, 0),
@@ -467,7 +411,7 @@ function DClib:MakeWindow(config)
             return Btn
         end
         
-        function TabObj:AddToggle(config)
+        function Tab:AddToggle(config)
             local toggleName = config.Name or "Toggle"
             local default = config.Default or false
             local callback = config.Callback or function() end
@@ -533,7 +477,7 @@ function DClib:MakeWindow(config)
             return {Set = SetValue, Get = function() return default end}
         end
         
-        function TabObj:AddSlider(config)
+        function Tab:AddSlider(config)
             local sliderName = config.Name or "Slider"
             local min = config.Min or 0
             local max = config.Max or 100
@@ -624,208 +568,53 @@ function DClib:MakeWindow(config)
             return {Set = UpdateValue, Get = function() return default end}
         end
         
-        function TabObj:AddParagraph(config)
-            local title = config.Title or "Title"
-            local text = config.Text or ""
-            
-            local Paragraph = Create("Frame", {
-                Name = "Paragraph",
-                Parent = PanelScroll,
-                Size = UDim2.new(1, 0, 0, 55),
-                BackgroundTransparency = 1
-            })
-            
-            local Title = Create("TextLabel", {
-                Name = "Title",
-                Parent = Paragraph,
-                Size = UDim2.new(1, 0, 0, 18),
-                BackgroundTransparency = 1,
-                Text = title,
-                TextColor3 = DClib.Themes[DClib.Theme].Text,
-                TextSize = 12,
-                Font = Enum.Font.GothamBold,
-                TextXAlignment = "Left"
-            })
-            
-            local Text = Create("TextLabel", {
-                Name = "Text",
-                Parent = Paragraph,
-                Size = UDim2.new(1, 0, 1, -18),
-                Position = UDim2.new(0, 0, 0, 18),
-                BackgroundTransparency = 1,
-                Text = text,
-                TextColor3 = DClib.Themes[DClib.Theme].Text2,
-                TextSize = 11,
-                Font = Enum.Font.Gotham,
-                TextWrapped = true,
-                TextXAlignment = "Left",
-                TextYAlignment = "Top"
-            })
-            
-            return Paragraph
-        end
-        
-        return TabObj
+        return Tab
     end
     
-    -- Notify function
-    function Window:Notify(config)
-        local title = config.Title or "Notify"
-        local text = config.Text or ""
-        local duration = config.Duration or 5
+    -- AddMinimizeButton function
+    function Window:AddMinimizeButton(config)
+        local buttonConfig = config.Button or {}
+        local cornerConfig = config.Corner or {}
+        local strokeConfig = config.Stroke or {}
         
-        local colors = {
-            Info = DClib.Themes[DClib.Theme].Accent,
-            Success = Color3.fromRGB(0, 200, 0),
-            Warning = Color3.fromRGB(255, 200, 0),
-            Error = Color3.fromRGB(255, 0, 0)
-        }
-        
-        local NotifyFrame = Create("Frame", {
-            Name = "NotifyFrame",
-            Parent = ScreenGui,
-            Size = UDim2.new(0, 300, 0, 80),
-            Position = UDim2.new(1, -320, 0, 10),
-            BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
-            ZIndex = 10000
+        local MinBtn = Create("ImageButton", {
+            Name = "CustomMinimizeButton",
+            Parent = TitleBar,
+            Size = buttonConfig.Size or UDim2.new(0, 30, 0, 30),
+            Position = buttonConfig.Position or UDim2.new(1, -78, 0.5, -15),
+            BackgroundColor3 = buttonConfig.BackgroundColor3 or DClib.Themes[DClib.Theme].Background,
+            BackgroundTransparency = buttonConfig.BackgroundTransparency or 0,
+            Image = buttonConfig.Image or "rbxassetid://125965818173870",
+            AutoButtonColor = false
         })
         
-        MakeCorner(NotifyFrame, 8)
-        MakeStroke(NotifyFrame, DClib.Themes[DClib.Theme].Stroke, 1)
+        -- Bo tròn button
+        MakeCorner(MinBtn, cornerConfig.CornerRadius or 6)
+        MakeStroke(MinBtn, strokeConfig.Color or DClib.Themes[DClib.Theme].Accent, strokeConfig.Thickness or 1)
         
-        local Title = Create("TextLabel", {
-            Name = "Title",
-            Parent = NotifyFrame,
-            Size = UDim2.new(1, -10, 0, 20),
-            Position = UDim2.new(0, 5, 0, 5),
-            BackgroundTransparency = 1,
-            Text = title,
-            TextColor3 = colors[config.Type] or colors.Info,
-            TextSize = 14,
-            Font = Enum.Font.GothamBold,
-            TextXAlignment = "Left"
-        })
-        
-        local Text = Create("TextLabel", {
-            Name = "Text",
-            Parent = NotifyFrame,
-            Size = UDim2.new(1, -10, 0, 40),
-            Position = UDim2.new(0, 5, 0, 25),
-            BackgroundTransparency = 1,
-            Text = text,
-            TextColor3 = DClib.Themes[DClib.Theme].Text2,
-            TextSize = 12,
-            Font = Enum.Font.Gotham,
-            TextWrapped = true,
-            TextXAlignment = "Left"
-        })
-        
-        Tween(NotifyFrame, {Position = UDim2.new(1, -10, 0, 10)}, 0.3)
-        
-        task.delay(duration, function()
-            Tween(NotifyFrame, {Position = UDim2.new(1, -320, 0, 10)}, 0.3)
-            task.wait(0.3)
-            NotifyFrame:Destroy()
+        -- Hover effects
+        MinBtn.MouseEnter:Connect(function()
+            Tween(MinBtn, {BackgroundTransparency = 0.2}, 0.15)
         end)
-    end
-    
-    -- Dialog function
-    function Window:Dialog(config)
-        local title = config.Title or "Dialog"
-        local text = config.Text or ""
-        local options = config.Options or {}
         
-        local Overlay = Create("Frame", {
-            Name = "Overlay",
-            Parent = ScreenGui,
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-            BackgroundTransparency = 0.5,
-            ZIndex = 9999
-        })
+        MinBtn.MouseLeave:Connect(function()
+            Tween(MinBtn, {BackgroundTransparency = buttonConfig.BackgroundTransparency or 0}, 0.15)
+        end)
         
-        local Dialog = Create("Frame", {
-            Name = "Dialog",
-            Parent = Overlay,
-            Size = UDim2.new(0, 320, 0, 160),
-            Position = UDim2.new(0.5, -160, 0.5, -80),
-            BackgroundColor3 = DClib.Themes[DClib.Theme].Background
-        })
+        -- Toggle minimize
+        MinBtn.MouseButton1Click:Connect(function()
+            if minimized then
+                Tween(MainFrame, {Size = UDim2.new(0, 400, 0, 400)}, 0.25)
+                Tween(MainFrame, {Position = UDim2.new(0.5, -200, 0.5, -200)}, 0.25)
+                minimized = false
+            else
+                Tween(MainFrame, {Size = UDim2.new(0, 400, 0, 60)}, 0.25)
+                Tween(MainFrame, {Position = UDim2.new(0.5, -200, 0.5, -30)}, 0.25)
+                minimized = true
+            end
+        end)
         
-        MakeCorner(Dialog, 12)
-        
-        local Title = Create("TextLabel", {
-            Name = "Title",
-            Parent = Dialog,
-            Size = UDim2.new(1, -20, 0, 25),
-            Position = UDim2.new(0, 10, 0, 5),
-            BackgroundTransparency = 1,
-            Text = title,
-            TextColor3 = DClib.Themes[DClib.Theme].Text,
-            TextSize = 14,
-            Font = Enum.Font.GothamBold,
-            TextXAlignment = "Left"
-        })
-        
-        local Text = Create("TextLabel", {
-            Name = "Text",
-            Parent = Dialog,
-            Size = UDim2.new(1, -20, 0, 50),
-            Position = UDim2.new(0, 10, 0, 30),
-            BackgroundTransparency = 1,
-            Text = text,
-            TextColor3 = DClib.Themes[DClib.Theme].Text2,
-            TextSize = 12,
-            Font = Enum.Font.Gotham,
-            TextWrapped = true,
-            TextXAlignment = "Left"
-        })
-        
-        local BtnContainer = Create("Frame", {
-            Name = "BtnContainer",
-            Parent = Dialog,
-            Size = UDim2.new(1, -20, 0, 40),
-            Position = UDim2.new(0, 10, 1, -45),
-            BackgroundTransparency = 1
-        })
-        
-        local BtnLayout = Create("UIListLayout", {
-            Parent = BtnContainer,
-            Padding = UDim.new(0, 10),
-            FillDirection = "Horizontal",
-            HorizontalAlignment = "Center"
-        })
-        
-        local function Close()
-            Tween(Dialog, {Size = UDim2.new(0, 0, 0, 0)}, 0.2)
-            Tween(Overlay, {Transparency = 1}, 0.2)
-            task.wait(0.2)
-            Overlay:Destroy()
-        end
-        
-        for _, opt in ipairs(options) do
-            local optName = opt[1]
-            local optCallback = opt[2]
-            
-            local Btn = Create("TextButton", {
-                Name = "Btn_" .. optName,
-                Parent = BtnContainer,
-                Size = UDim2.new(0, 100, 0, 32),
-                BackgroundColor3 = DClib.Themes[DClib.Theme].Accent,
-                Text = optName,
-                TextColor3 = DClib.Themes[DClib.Theme].Text,
-                AutoButtonColor = true,
-                Font = Enum.Font.GothamBold,
-                TextSize = 12
-            })
-            
-            MakeCorner(Btn, 6)
-            
-            Btn.MouseButton1Click:Connect(function()
-                if optCallback then optCallback() end
-                Close()
-            end)
-        end
+        return MinBtn
     end
     
     return Window
