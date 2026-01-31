@@ -1,0 +1,1561 @@
+--[[
+    DClib - Dac Cau Library
+    A modern Roblox UI library with rounded design, animations, and themes
+    
+    Version: 1.0.0
+    Created: 2026-01-31
+]]
+
+-- ============================================
+-- SERVICES
+-- ============================================
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+local Player = Players.LocalPlayer
+local PlayerMouse = Player:GetMouse()
+local ViewportSize = workspace.CurrentCamera.ViewportSize
+
+-- ============================================
+-- CORNER RADIUS CONSTANTS
+-- ============================================
+local CornerRadius = {
+    Small = UDim.new(0, 4),
+    Medium = UDim.new(0, 6),
+    Large = UDim.new(0, 8),
+    Full = UDim.new(0, 9999)
+}
+
+-- ============================================
+-- SIZE PRESETS
+-- ============================================
+local SizePresets = {
+    Small = {
+        WindowSize = UDim2.new(0, 450, 0, 320),
+        ButtonHeight = 30,
+        ToggleSize = UDim2.new(0, 35, 0, 16),
+        IconSize = 12,
+        CornerRadius = UDim.new(0, 4)
+    },
+    Normal = {
+        WindowSize = UDim2.new(0, 550, 0, 380),
+        ButtonHeight = 35,
+        ToggleSize = UDim2.new(0, 35, 0, 18),
+        IconSize = 14,
+        CornerRadius = UDim.new(0, 6)
+    },
+    Large = {
+        WindowSize = UDim2.new(0, 650, 0, 450),
+        ButtonHeight = 40,
+        ToggleSize = UDim2.new(0, 40, 0, 20),
+        IconSize = 16,
+        CornerRadius = UDim.new(0, 8)
+    },
+    ExtraLarge = {
+        WindowSize = UDim2.new(0, 750, 0, 520),
+        ButtonHeight = 45,
+        ToggleSize = UDim2.new(0, 45, 0, 22),
+        IconSize = 18,
+        CornerRadius = UDim.new(0, 10)
+    }
+}
+
+-- ============================================
+-- THEMES (27 Themes)
+-- ============================================
+local Themes = {
+    Dark = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(40, 40, 40)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(47.5, 47.5, 47.5)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(40, 40, 40))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(45, 45, 45),
+        ["Color Stroke"] = Color3.fromRGB(65, 65, 65),
+        ["Color Theme"] = Color3.fromRGB(88, 101, 242),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(190, 190, 190)
+    },
+    Light = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(220, 220, 220)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(235, 235, 235)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(220, 220, 220))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(225, 225, 225),
+        ["Color Stroke"] = Color3.fromRGB(240, 240, 240),
+        ["Color Theme"] = Color3.fromRGB(0, 123, 255),
+        ["Color Text"] = Color3.fromRGB(10, 10, 10),
+        ["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
+    },
+    Darker = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(25, 25, 25)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(32.5, 32.5, 32.5)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(25, 25, 25))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(30, 30, 30),
+        ["Color Stroke"] = Color3.fromRGB(40, 40, 40),
+        ["Color Theme"] = Color3.fromRGB(88, 101, 242),
+        ["Color Text"] = Color3.fromRGB(243, 243, 243),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    Purple = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27.5, 25, 30)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(32.5, 32.5, 32.5)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(27.5, 25, 30))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(30, 30, 30),
+        ["Color Stroke"] = Color3.fromRGB(40, 40, 40),
+        ["Color Theme"] = Color3.fromRGB(150, 0, 255),
+        ["Color Text"] = Color3.fromRGB(240, 240, 240),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    Blue = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(30, 50, 100)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(40, 60, 120)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(30, 50, 100))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(35, 55, 110),
+        ["Color Stroke"] = Color3.fromRGB(50, 70, 130),
+        ["Color Theme"] = Color3.fromRGB(0, 150, 255),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    Green = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(30, 60, 30)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(40, 80, 40)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(30, 60, 30))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(35, 70, 35),
+        ["Color Stroke"] = Color3.fromRGB(50, 90, 50),
+        ["Color Theme"] = Color3.fromRGB(0, 200, 0),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    Red = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(80, 20, 20)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(100, 30, 30)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(80, 20, 20))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(90, 25, 25),
+        ["Color Stroke"] = Color3.fromRGB(110, 40, 40),
+        ["Color Theme"] = Color3.fromRGB(255, 0, 0),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    Orange = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(100, 50, 0)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(120, 70, 20)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 50, 0))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(110, 60, 10),
+        ["Color Stroke"] = Color3.fromRGB(130, 80, 30),
+        ["Color Theme"] = Color3.fromRGB(255, 165, 0),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    Yellow = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(150, 150, 0)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(180, 180, 30)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(150, 150, 0))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(160, 160, 10),
+        ["Color Stroke"] = Color3.fromRGB(190, 190, 40),
+        ["Color Theme"] = Color3.fromRGB(255, 255, 0),
+        ["Color Text"] = Color3.fromRGB(10, 10, 10),
+        ["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
+    },
+    Pink = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(100, 20, 50)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(120, 40, 70)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 20, 50))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(110, 30, 60),
+        ["Color Stroke"] = Color3.fromRGB(130, 50, 80),
+        ["Color Theme"] = Color3.fromRGB(255, 0, 150),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    Cyan = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 80, 80)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(20, 100, 100)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 80, 80))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(10, 90, 90),
+        ["Color Stroke"] = Color3.fromRGB(30, 110, 110),
+        ["Color Theme"] = Color3.fromRGB(0, 255, 255),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    Teal = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 60, 60)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(20, 80, 80)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 60, 60))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(10, 70, 70),
+        ["Color Stroke"] = Color3.fromRGB(30, 90, 90),
+        ["Color Theme"] = Color3.fromRGB(0, 128, 128),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    -- Advanced Themes
+    Gray = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(100, 100, 100)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(120, 120, 120)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 100, 100))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(110, 110, 110),
+        ["Color Stroke"] = Color3.fromRGB(130, 130, 130),
+        ["Color Theme"] = Color3.fromRGB(150, 150, 150),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    PastelDream = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(250, 230, 240)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(240, 240, 250)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(250, 230, 240))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(245, 235, 245),
+        ["Color Stroke"] = Color3.fromRGB(220, 210, 230),
+        ["Color Theme"] = Color3.fromRGB(255, 182, 193),
+        ["Color Text"] = Color3.fromRGB(50, 50, 50),
+        ["Color Dark Text"] = Color3.fromRGB(100, 100, 100)
+    },
+    VintageRose = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(200, 150, 160)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(220, 170, 180)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(200, 150, 160))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(210, 160, 170),
+        ["Color Stroke"] = Color3.fromRGB(180, 130, 140),
+        ["Color Theme"] = Color3.fromRGB(255, 215, 0),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    ForestWhisper = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(50, 80, 50)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(70, 100, 70)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 80, 50))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(60, 90, 60),
+        ["Color Stroke"] = Color3.fromRGB(40, 70, 40),
+        ["Color Theme"] = Color3.fromRGB(34, 139, 34),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    OceanBreeze = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(100, 150, 200)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(120, 170, 220)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 150, 200))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(110, 160, 210),
+        ["Color Stroke"] = Color3.fromRGB(80, 130, 180),
+        ["Color Theme"] = Color3.fromRGB(0, 191, 255),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    LavenderField = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(180, 150, 220)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(200, 170, 240)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(180, 150, 220))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(190, 160, 230),
+        ["Color Stroke"] = Color3.fromRGB(160, 130, 200),
+        ["Color Theme"] = Color3.fromRGB(138, 43, 226),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    SunsetGlow = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 100, 100)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 150, 120)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 100, 100))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(255, 120, 110),
+        ["Color Stroke"] = Color3.fromRGB(200, 80, 80),
+        ["Color Theme"] = Color3.fromRGB(255, 69, 0),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    EarthyTones = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(120, 80, 40)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(140, 100, 60)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(120, 80, 40))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(130, 90, 50),
+        ["Color Stroke"] = Color3.fromRGB(100, 60, 20),
+        ["Color Theme"] = Color3.fromRGB(160, 82, 45),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    MysticPurple = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(70, 30, 100)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(90, 50, 120)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(70, 30, 100))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(80, 40, 110),
+        ["Color Stroke"] = Color3.fromRGB(50, 20, 80),
+        ["Color Theme"] = Color3.fromRGB(128, 0, 128),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    CandyPop = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 200, 200)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 220, 220)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 200, 200))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(255, 210, 210),
+        ["Color Stroke"] = Color3.fromRGB(230, 180, 180),
+        ["Color Theme"] = Color3.fromRGB(255, 105, 180),
+        ["Color Text"] = Color3.fromRGB(50, 50, 50),
+        ["Color Dark Text"] = Color3.fromRGB(100, 100, 100)
+    },
+    RetroWave = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 255, 255)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 200, 200)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 255, 255))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(0, 230, 230),
+        ["Color Stroke"] = Color3.fromRGB(0, 180, 180),
+        ["Color Theme"] = Color3.fromRGB(255, 0, 255),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    Spring = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(144, 238, 144)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(173, 216, 230)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(144, 238, 144))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(152, 251, 152),
+        ["Color Stroke"] = Color3.fromRGB(255, 182, 193),
+        ["Color Theme"] = Color3.fromRGB(255, 20, 147),
+        ["Color Text"] = Color3.fromRGB(0, 0, 0),
+        ["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
+    },
+    Summer = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 0)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 165, 0)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 255, 0))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(255, 215, 0),
+        ["Color Stroke"] = Color3.fromRGB(0, 191, 255),
+        ["Color Theme"] = Color3.fromRGB(0, 255, 255),
+        ["Color Text"] = Color3.fromRGB(0, 0, 0),
+        ["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
+    },
+    Autumn = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 140, 0)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(160, 82, 45)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 140, 0))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(255, 69, 0),
+        ["Color Stroke"] = Color3.fromRGB(139, 69, 19),
+        ["Color Theme"] = Color3.fromRGB(255, 0, 0),
+        ["Color Text"] = Color3.fromRGB(245, 245, 245),
+        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
+    },
+    Winter = {
+        ["Color Hub 1"] = ColorSequence.new({
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(173, 216, 230)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 255, 255))
+        }),
+        ["Color Hub 2"] = Color3.fromRGB(240, 248, 255),
+        ["Color Stroke"] = Color3.fromRGB(192, 192, 192),
+        ["Color Theme"] = Color3.fromRGB(70, 130, 180),
+        ["Color Text"] = Color3.fromRGB(0, 0, 0),
+        ["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
+    }
+}
+
+-- ============================================
+-- ICONS (Placeholder with common icons)
+-- ============================================
+local Icons = {
+    -- UI Icons
+    close = "rbxassetid://10747384394",
+    minimize = "rbxassetid://10734896206",
+    settings = "rbxassetid://10734950309",
+    check = "rbxassetid://10709790644",
+    home = "rbxassetid://10723407389",
+    user = "rbxassetid://10747373176",
+    users = "rbxassetid://10747373426",
+    message = "rbxassetid://10734888000",
+    bell = "rbxassetid://10709775704",
+    
+    -- Game Icons
+    sword = "rbxassetid://10734975486",
+    shield = "rbxassetid://10734951847",
+    crown = "rbxassetid://10709818626",
+    trophy = "rbxassetid://10747363809",
+    
+    -- Tool Icons
+    wrench = "rbxassetid://10747383470",
+    hammer = "rbxassetid://10723405360",
+    
+    -- Navigation
+    chevronright = "rbxassetid://10709791437",
+    chevrondown = "rbxassetid://10709790948",
+    chevronup = "rbxassetid://10709791523",
+    
+    -- System
+    maximize = "rbxassetid://10734886735",
+    restore = "rbxassetid://10734895698",
+    menu = "rbxassetid://10734887784",
+    
+    -- Add more icons as needed
+}
+
+-- ============================================
+-- COLOR PRESETS FOR COLOR PICKER
+-- ============================================
+local ColorPresets = {
+    Color3.fromRGB(255, 0, 0),     -- Red
+    Color3.fromRGB(255, 127, 0),   -- Orange
+    Color3.fromRGB(255, 255, 0),   -- Yellow
+    Color3.fromRGB(0, 255, 0),     -- Green
+    Color3.fromRGB(0, 255, 255),   -- Cyan
+    Color3.fromRGB(0, 0, 255),     -- Blue
+    Color3.fromRGB(128, 0, 128),   -- Purple
+    Color3.fromRGB(255, 0, 255),   -- Magenta
+    Color3.fromRGB(255, 255, 255), -- White
+    Color3.fromRGB(0, 0, 0),       -- Black
+    Color3.fromRGB(88, 101, 242),  -- Blurple
+    Color3.fromRGB(88, 242, 101),  -- Green theme
+}
+
+-- ============================================
+-- DCLIB MAIN OBJECT
+-- ============================================
+local DClib = {
+    Themes = Themes,
+    Icons = Icons,
+    ColorPresets = ColorPresets,
+    CornerRadius = CornerRadius,
+    SizePresets = SizePresets,
+    
+    -- Internal state
+    _theme = "Dark",
+    _sizePreset = "Normal",
+    _autoScale = true,
+    _instances = {},
+    _connections = {},
+    _callbacks = {},
+    _settings = {},
+}
+
+-- Default settings
+DClib._settings = {
+    WindowSize = SizePresets.Normal.WindowSize,
+    ButtonHeight = SizePresets.Normal.ButtonHeight,
+    ToggleSize = SizePresets.Normal.ToggleSize,
+    IconSize = SizePresets.Normal.IconSize,
+    CornerRadius = SizePresets.Normal.CornerRadius,
+}
+
+-- ============================================
+-- UTILITY FUNCTIONS
+-- ============================================
+local function Create(InstanceType, Props, Children)
+    local instance = Instance.new(InstanceType)
+    
+    -- Apply properties
+    if Props then
+        for property, value in pairs(Props) do
+            instance[property] = value
+        end
+    end
+    
+    -- Add children
+    if Children then
+        for _, child in ipairs(Children) do
+            child.Parent = instance
+        end
+    end
+    
+    return instance
+end
+
+local function SetProps(Instance, Props)
+    if Props then
+        for property, value in pairs(Props) do
+            Instance[property] = value
+        end
+    end
+    return Instance
+end
+
+local function SetChildren(Instance, Children)
+    if Children then
+        for _, child in ipairs(Children) do
+            child.Parent = Instance
+        end
+    end
+    return Instance
+end
+
+local function MakeCorner(Parent, Radius)
+    local corner = Create("UICorner", {
+        Parent = Parent,
+        CornerRadius = Radius or DClib._settings.CornerRadius
+    })
+    return corner
+end
+
+local function MakeStroke(Parent, Color, Thickness)
+    local stroke = Create("UIStroke", {
+        Parent = Parent,
+        Color = Color or DClib.Themes[DClib._theme]["Color Stroke"],
+        Thickness = Thickness or 1,
+        ApplyStrokeMode = "Border"
+    })
+    return stroke
+end
+
+local function MakePadding(Parent, Padding)
+    local padding = Create("UIPadding", {
+        Parent = Parent,
+        PaddingLeft = Padding or UDim.new(0, 10),
+        PaddingRight = UDim.new(0, 10),
+        PaddingTop = UDim.new(0, 10),
+        PaddingBottom = UDim.new(0, 10)
+    })
+    return padding
+end
+
+local function MakeListLayout(Parent, Padding, Spacing)
+    local layout = Create("UIListLayout", {
+        Parent = Parent,
+        Padding = Padding or UDim.new(0, 5),
+        SortOrder = "LayoutOrder",
+        VerticalAlignment = "Center"
+    })
+    return layout
+end
+
+-- Tween helper
+local function CreateTween(Instance, Property, TargetValue, Duration, EasingStyle, Callback)
+    local tweenInfo = TweenInfo.new(
+        Duration or 0.25,
+        EasingStyle or Enum.EasingStyle.Quint,
+        Enum.EasingDirection.Out
+    )
+    
+    local tween = TweenService:Create(Instance, tweenInfo, {
+        [Property] = TargetValue
+    })
+    
+    tween.Completed:Connect(function()
+        if Callback then Callback() end
+    end)
+    
+    tween:Play()
+    return tween
+end
+
+-- ============================================
+-- THEME MANAGEMENT
+-- ============================================
+function DClib:SetTheme(ThemeName)
+    if not self.Themes[ThemeName] then return end
+    
+    self._theme = ThemeName
+    local theme = self.Themes[ThemeName]
+    
+    -- Update all registered instances
+    for _, data in ipairs(self._instances) do
+        local instance = data.Instance
+        local type = data.Type
+        
+        if type == "Frame" or type == "Button" then
+            instance.BackgroundColor3 = theme["Color Hub 2"]
+        elseif type == "Gradient" then
+            instance.Color = theme["Color Hub 1"]
+        elseif type == "Stroke" then
+            instance.Color = theme["Color Stroke"]
+        elseif type == "Theme" then
+            instance.Color = theme["Color Theme"]
+        elseif type == "Text" then
+            instance.TextColor3 = theme["Color Text"]
+        elseif type == "DarkText" then
+            instance.TextColor3 = theme["Color Dark Text"]
+        elseif type == "ScrollBar" then
+            instance.ScrollBarImageColor3 = theme["Color Theme"]
+        end
+    end
+    
+    -- Fire callbacks
+    self:_fireCallbacks("ThemeChanged", ThemeName)
+end
+
+function DClib:GetTheme()
+    return self._theme
+end
+
+function DClib:GetThemeColor(ColorName)
+    return self.Themes[self._theme][ColorName]
+end
+
+function DClib:SetThemeColor(ColorName, Color)
+    self.Themes[self._theme][ColorName] = Color
+    self:SetTheme(self._theme) -- Refresh
+end
+
+-- ============================================
+-- SIZE PRESET MANAGEMENT
+-- ============================================
+function DClib:SetSizePreset(PresetName)
+    if not self.SizePresets[PresetName] then return end
+    
+    self._sizePreset = PresetName
+    local preset = self.SizePresets[PresetName]
+    
+    self._settings.WindowSize = preset.WindowSize
+    self._settings.ButtonHeight = preset.ButtonHeight
+    self._settings.ToggleSize = preset.ToggleSize
+    self._settings.IconSize = preset.IconSize
+    self._settings.CornerRadius = preset.CornerRadius
+    
+    self:_fireCallbacks("SizeChanged", PresetName)
+end
+
+function DClib:GetSizePreset()
+    return self._sizePreset
+end
+
+function DClib:GetCurrentSettings()
+    return self._settings
+end
+
+function DClib:SetAutoScale(Enabled)
+    self._autoScale = Enabled
+    if Enabled then
+        self:AutoScale()
+    end
+end
+
+function DClib:AutoScale()
+    local ScreenY = ViewportSize.Y
+    
+    if ScreenY < 600 then
+        self:SetSizePreset("Small")
+    elseif ScreenY < 800 then
+        self:SetSizePreset("Normal")
+    elseif ScreenY < 1000 then
+        self:SetSizePreset("Large")
+    else
+        self:SetSizePreset("ExtraLarge")
+    end
+end
+
+-- ============================================
+-- CALLBACK SYSTEM
+-- ============================================
+function DClib:_initCallbacks()
+    self._callbacks = {
+        ThemeChanged = {},
+        SizeChanged = {},
+        TabSelected = {},
+        ToggleChanged = {},
+        DropdownChanged = {},
+        SliderChanged = {},
+    }
+end
+
+function DClib:On(EventName, Callback)
+    if not self._callbacks[EventName] then return end
+    table.insert(self._callbacks[EventName], Callback)
+    return {
+        Disconnect = function()
+            for i, cb in ipairs(self._callbacks[EventName]) do
+                if cb == Callback then
+                    table.remove(self._callbacks[EventName], i)
+                    break
+                end
+            end
+        end
+    }
+end
+
+function DClib:_fireCallbacks(EventName, ...)
+    if not self._callbacks[EventName] then return end
+    for _, callback in ipairs(self._callbacks[EventName]) do
+        task.spawn(callback, ...)
+    end
+end
+
+-- ============================================
+-- INSTANCE REGISTRATION
+-- ============================================
+function DClib:_registerInstance(Instance, Type)
+    table.insert(self._instances, {
+        Instance = Instance,
+        Type = Type
+    })
+end
+
+-- ============================================
+-- ICON MANAGEMENT
+-- ============================================
+function DClib:GetIcon(IconName)
+    if not IconName then return nil end
+    
+    -- Return as-is if it's already an asset ID
+    if string.find(IconName, "rbxassetid://") then
+        return IconName
+    end
+    
+    -- Look up in icons table
+    return self.Icons[IconName] or nil
+end
+
+-- ============================================
+-- MAIN WINDOW CREATION
+-- ============================================
+function DClib:MakeWindow(Configs)
+    local WindowTitle = Configs.Name or Configs.Title or "DClib"
+    local SubTitle = Configs.SubTitle or "by Dac Cau"
+    local SaveFolder = Configs.SaveFolder or false
+    
+    -- Initialize callbacks
+    self:_initCallbacks()
+    
+    -- Auto scale if enabled
+    if self._autoScale then
+        self:AutoScale()
+    end
+    
+    -- Create ScreenGui
+    local ScreenGui = Create("ScreenGui", {
+        Name = "DClib_ScreenGui",
+        Parent = RunService:IsClient() and CoreGui or Player:WaitForChild("PlayerGui"),
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
+    })
+    
+    -- Create main frame
+    local MainFrame = Create("Frame", {
+        Name = "MainFrame",
+        Parent = ScreenGui,
+        Size = self._settings.WindowSize,
+        Position = UDim2.new(0.5, -self._settings.WindowSize.X.Offset / 2, 0.5, -self._settings.WindowSize.Y.Offset / 2),
+        BackgroundColor3 = self.Themes[self._theme]["Color Hub 2"],
+        BackgroundTransparency = 0,
+        ClipsDescendants = true,
+        BorderSizePixel = 0,
+    })
+    
+    -- Add corner
+    MakeCorner(MainFrame, self._settings.CornerRadius)
+    MakeStroke(MainFrame, self.Themes[self._theme]["Color Stroke"], 1)
+    
+    -- Register main frame
+    self:_registerInstance(MainFrame, "Frame")
+    
+    -- Create title bar
+    local TitleBar = Create("Frame", {
+        Name = "TitleBar",
+        Parent = MainFrame,
+        Size = UDim2.new(1, 0, 0, 30),
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 0, 0, 0),
+    })
+    
+    local TitleLabel = Create("TextLabel", {
+        Name = "TitleLabel",
+        Parent = TitleBar,
+        Size = UDim2.new(1, -60, 1, 0),
+        Position = UDim2.new(0, 10, 0, 0),
+        BackgroundTransparency = 1,
+        Text = WindowTitle,
+        TextColor3 = self.Themes[self._theme]["Color Text"],
+        TextXAlignment = "Left",
+        TextYAlignment = "Center",
+        Font = Enum.Font.GothamBold,
+        TextSize = 14,
+    })
+    self:_registerInstance(TitleLabel, "Text")
+    
+    local SubTitleLabel = Create("TextLabel", {
+        Name = "SubTitleLabel",
+        Parent = TitleBar,
+        Size = UDim2.new(1, -70, 0, 12),
+        Position = UDim2.new(0, 10, 1, -12),
+        BackgroundTransparency = 1,
+        Text = SubTitle,
+        TextColor3 = self.Themes[self._theme]["Color Dark Text"],
+        TextXAlignment = "Left",
+        TextYAlignment = "Top",
+        Font = Enum.Font.Gotham,
+        TextSize = 10,
+    })
+    self:_registerInstance(SubTitleLabel, "DarkText")
+    
+    -- Create close button
+    local CloseButton = Create("ImageButton", {
+        Name = "CloseButton",
+        Parent = TitleBar,
+        Size = UDim2.new(0, 14, 0, 14),
+        Position = UDim2.new(1, -24, 0.5, -7),
+        BackgroundTransparency = 1,
+        Image = self.Icons.close,
+        ImageColor3 = self.Themes[self._theme]["Color Dark Text"],
+    })
+    
+    CloseButton.MouseButton1Click:Connect(function()
+        CreateTween(MainFrame, "Size", UDim2.new(0, 0, 0, 0), 0.3, Enum.EasingStyle.Quad)
+        CreateTween(MainFrame, "Transparency", 1, 0.3, nil, function()
+            ScreenGui:Destroy()
+        end)
+    end)
+    
+    -- Create minimize button placeholder (can be customized)
+    local MinimizeButton = Create("ImageButton", {
+        Name = "MinimizeButton",
+        Parent = TitleBar,
+        Size = UDim2.new(0, 14, 0, 14),
+        Position = UDim2.new(1, -44, 0.5, -7),
+        BackgroundTransparency = 1,
+        Image = self.Icons.minimize,
+        ImageColor3 = self.Themes[self._theme]["Color Dark Text"],
+    })
+    
+    -- Create content container
+    local ContentContainer = Create("Frame", {
+        Name = "ContentContainer",
+        Parent = MainFrame,
+        Size = UDim2.new(1, 0, 1, -30),
+        Position = UDim2.new(0, 0, 0, 30),
+        BackgroundTransparency = 1,
+        ClipsDescendants = true,
+    })
+    
+    -- Create tab area (top of content)
+    local TabArea = Create("Frame", {
+        Name = "TabArea",
+        Parent = ContentContainer,
+        Size = UDim2.new(1, 0, 0, 40),
+        Position = UDim2.new(0, 0, 0, 0),
+        BackgroundTransparency = 1,
+    })
+    
+    -- Create scroll frame for tabs
+    local TabScroll = Create("ScrollingFrame", {
+        Name = "TabScroll",
+        Parent = TabArea,
+        Size = UDim2.new(1, -20, 1, 0),
+        Position = UDim2.new(0, 10, 0, 0),
+        BackgroundTransparency = 1,
+        ScrollBarThickness = 0,
+        ScrollingDirection = "X",
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = "X",
+    })
+    
+    local TabListLayout = Create("UIListLayout", {
+        Parent = TabScroll,
+        Padding = UDim.new(0, 5),
+        FillDirection = "Horizontal",
+        VerticalAlignment = "Center",
+        HorizontalAlignment = "Center",
+    })
+    
+    -- Create main content area
+    local MainContent = Create("Frame", {
+        Name = "MainContent",
+        Parent = ContentContainer,
+        Size = UDim2.new(1, -20, 1, -50),
+        Position = UDim2.new(0, 10, 0, 50),
+        BackgroundTransparency = 1,
+        ClipsDescendants = true,
+    })
+    
+    -- Scroll frame for content
+    local ContentScroll = Create("ScrollingFrame", {
+        Name = "ContentScroll",
+        Parent = MainContent,
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        ScrollBarThickness = 4,
+        ScrollBarImageColor3 = self.Themes[self._theme]["Color Theme"],
+        ScrollBarImageTransparency = 0.2,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = "Y",
+        ScrollingDirection = "Y",
+    })
+    self:_registerInstance(ContentScroll, "ScrollBar")
+    
+    MakePadding(ContentScroll)
+    MakeListLayout(ContentScroll)
+    
+    -- Tab buttons storage
+    local TabButtons = {}
+    local TabPanels = {}
+    local ActiveTab = nil
+    
+    -- Window object to return
+    local Window = {}
+    
+    -- Drag functionality
+    local Dragging = false
+    local DragStart = nil
+    local StartPos = nil
+    
+    TitleBar.InputBegan:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+            Dragging = true
+            DragStart = Input.Position
+            StartPos = MainFrame.Position
+            
+            local Connection
+            Connection = UserInputService.InputChanged:Connect(function(Input)
+                if Dragging and Input.UserInputType == Enum.UserInputType.MouseMovement then
+                    local Delta = Input.Position - DragStart
+                    MainFrame.Position = UDim2.new(
+                        StartPos.X.Scale,
+                        StartPos.X.Offset + Delta.X,
+                        StartPos.Y.Scale,
+                        StartPos.Y.Offset + Delta.Y
+                    )
+                end
+            end)
+            
+            local EndConnection
+            EndConnection = UserInputService.InputEnded:Connect(function(Input)
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    Dragging = false
+                    Connection:Disconnect()
+                    EndConnection:Disconnect()
+                end
+            end)
+        end
+    end)
+    
+    -- Create minimize button with custom image
+    function Window:AddMinimizeButton(Configs)
+        local ButtonConfig = Configs.Button or {}
+        local CornerConfig = Configs.Corner or {}
+        local StrokeConfig = Configs.Stroke or {}
+        
+        local MinBtn = Create("ImageButton", {
+            Name = "CustomMinimizeButton",
+            Parent = TitleBar,
+            Size = ButtonConfig.Size or UDim2.new(0, 30, 0, 30),
+            Position = ButtonConfig.Position or UDim2.new(1, -70, 0.5, -15),
+            BackgroundColor3 = ButtonConfig.BackgroundColor3 or self.Themes[self._theme]["Color Hub 2"],
+            BackgroundTransparency = ButtonConfig.BackgroundTransparency or 0,
+            Image = ButtonConfig.Image or "rbxassetid://125965818173870",
+            AutoButtonColor = false,
+        })
+        
+        MakeCorner(MinBtn, CornerConfig.CornerRadius or UDim.new(0, 6))
+        MakeStroke(MinBtn, StrokeConfig.Color or self.Themes[self._theme]["Color Theme"], StrokeConfig.Thickness or 1)
+        
+        MinBtn.MouseEnter:Connect(function()
+            CreateTween(MinBtn, "BackgroundTransparency", 0.2, 0.15)
+        end)
+        
+        MinBtn.MouseLeave:Connect(function()
+            CreateTween(MinBtn, "BackgroundTransparency", ButtonConfig.BackgroundTransparency or 0, 0.15)
+        end)
+        
+        MinBtn.MouseButton1Click:Connect(function()
+            -- Toggle minimize behavior
+            CreateTween(MainFrame, "Size", UDim2.new(0, MainFrame.Size.X.Offset, 0, 30), 0.25, Enum.EasingStyle.Quad)
+        end)
+        
+        return MinBtn
+    end
+    
+    -- Create tab button
+    function Window:AddTabButton(Configs)
+        local TabName = Configs.Name or Configs.Title or "Tab"
+        local TabIcon = self:GetIcon(Configs.Icon)
+        
+        local TabButton = Create("TextButton", {
+            Name = "TabButton_" .. TabName,
+            Parent = TabScroll,
+            Size = UDim2.new(0, 80, 0, 30),
+            BackgroundColor3 = self.Themes[self._theme]["Color Hub 2"],
+            Text = "",
+            AutoButtonColor = false,
+        })
+        
+        MakeCorner(TabButton, self._settings.CornerRadius)
+        
+        local IconImage = Create("ImageLabel", {
+            Name = "TabIcon",
+            Parent = TabButton,
+            Size = UDim2.new(0, 16, 0, 16),
+            Position = UDim2.new(0.5, -8, 0.5, -8),
+            BackgroundTransparency = 1,
+            Image = TabIcon or "",
+            ImageColor3 = self.Themes[self._theme]["Color Text"],
+        })
+        self:_registerInstance(IconImage, "Theme")
+        
+        local ButtonLabel = Create("TextLabel", {
+            Name = "TabLabel",
+            Parent = TabButton,
+            Size = UDim2.new(1, 0, 0, 12),
+            Position = UDim2.new(0, 0, 1, -12),
+            BackgroundTransparency = 1,
+            Text = TabName,
+            TextColor3 = self.Themes[self._theme]["Color Text"],
+            TextSize = 10,
+            Font = Enum.Font.GothamMedium,
+            TextXAlignment = "Center",
+            TextYAlignment = "Top",
+        })
+        self:_registerInstance(ButtonLabel, "Text")
+        
+        -- Create content panel (initially hidden)
+        local ContentPanel = Create("Frame", {
+            Name = "TabPanel_" .. TabName,
+            Parent = ContentScroll,
+            Size = UDim2.new(1, 0, 0, 100),
+            Visible = false,
+            BackgroundColor3 = self.Themes[self._theme]["Color Hub 2"],
+            ClipsDescendants = true,
+        })
+        
+        MakeCorner(ContentPanel, self._settings.CornerRadius)
+        MakeStroke(ContentPanel, self.Themes[self._theme]["Color Stroke"], 1)
+        self:_registerInstance(ContentPanel, "Frame")
+        
+        -- Panel header with close button
+        local PanelHeader = Create("Frame", {
+            Name = "PanelHeader",
+            Parent = ContentPanel,
+            Size = UDim2.new(1, 0, 0, 25),
+            BackgroundTransparency = 1,
+        })
+        
+        local PanelTitle = Create("TextLabel", {
+            Name = "PanelTitle",
+            Parent = PanelHeader,
+            Size = UDim2.new(1, -30, 1, 0),
+            Position = UDim2.new(0, 10, 0, 0),
+            BackgroundTransparency = 1,
+            Text = TabName,
+            TextColor3 = self.Themes[self._theme]["Color Text"],
+            TextSize = 12,
+            Font = Enum.Font.GothamBold,
+            TextXAlignment = "Left",
+        })
+        self:_registerInstance(PanelTitle, "Text")
+        
+        local ClosePanelBtn = Create("ImageButton", {
+            Name = "ClosePanelButton",
+            Parent = PanelHeader,
+            Size = UDim2.new(0, 16, 0, 16),
+            Position = UDim2.new(1, -20, 0.5, -8),
+            BackgroundTransparency = 1,
+            Image = self.Icons.close,
+            ImageColor3 = self.Themes[self._theme]["Color Dark Text"],
+        })
+        
+        ClosePanelBtn.MouseButton1Click:Connect(function()
+            CreateTween(ContentPanel, "Transparency", 1, 0.15)
+            task.wait(0.15)
+            ContentPanel.Visible = false
+            ContentPanel.Transparency = 0
+        end)
+        
+        -- Scroll frame for tab content
+        local PanelScroll = Create("ScrollingFrame", {
+            Name = "PanelScroll",
+            Parent = ContentPanel,
+            Size = UDim2.new(1, -4, 1, -29),
+            Position = UDim2.new(0, 2, 0, 27),
+            BackgroundTransparency = 1,
+            ScrollBarThickness = 4,
+            ScrollBarImageColor3 = self.Themes[self._theme]["Color Theme"],
+            ScrollBarImageTransparency = 0.2,
+            CanvasSize = UDim2.new(0, 0, 0, 0),
+            AutomaticCanvasSize = "Y",
+            ScrollingDirection = "Y",
+        })
+        self:_registerInstance(PanelScroll, "ScrollBar")
+        
+        MakePadding(PanelScroll)
+        MakeListLayout(PanelScroll)
+        
+        -- Tab selection
+        TabButton.MouseButton1Click:Connect(function()
+            -- Hide all other panels
+            for _, panel in ipairs(TabPanels) do
+                if panel ~= ContentPanel then
+                    panel.Visible = false
+                end
+            end
+            
+            -- Show/hide current panel
+            if ContentPanel.Visible then
+                CreateTween(ContentPanel, "Transparency", 1, 0.15)
+                task.wait(0.15)
+                ContentPanel.Visible = false
+                ContentPanel.Transparency = 0
+            else
+                ContentPanel.Visible = true
+                ContentPanel.Size = UDim2.new(1, 0, 0, 100)
+                CreateTween(ContentPanel, "Size", UDim2.new(1, 0, 1, -4), 0.25, Enum.EasingStyle.Quad)
+                CreateTween(ContentPanel, "Transparency", 0, 0.2)
+            end
+            
+            self:_fireCallbacks("TabSelected", TabName)
+        end)
+        
+        table.insert(TabButtons, TabButton)
+        table.insert(TabPanels, ContentPanel)
+        
+        -- Return tab object for adding components
+        local Tab = {}
+        
+        function Tab:AddSection(SectionName)
+            local Section = Create("Frame", {
+                Name = "Section",
+                Parent = PanelScroll,
+                Size = UDim2.new(1, 0, 0, 25),
+                BackgroundTransparency = 1,
+            })
+            
+            local SectionLabel = Create("TextLabel", {
+                Name = "SectionLabel",
+                Parent = Section,
+                Size = UDim2.new(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                Text = SectionName,
+                TextColor3 = DClib.Themes[DClib._theme]["Color Text"],
+                TextSize = 12,
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = "Left",
+            })
+            DClib:_registerInstance(SectionLabel, "Text")
+            
+            return Section
+        end
+        
+        function Tab:AddButton(Configs)
+            local ButtonName = Configs.Name or Configs.Title or "Button"
+            local Callback = Configs.Callback or function() end
+            
+            local Button = Create("TextButton", {
+                Name = "Button",
+                Parent = PanelScroll,
+                Size = UDim2.new(1, 0, 0, DClib._settings.ButtonHeight),
+                BackgroundColor3 = DClib.Themes[DClib._theme]["Color Hub 2"],
+                AutoButtonColor = false,
+                Text = "",
+            })
+            
+            MakeCorner(Button, DClib._settings.CornerRadius)
+            DClib:_registerInstance(Button, "Button")
+            
+            local ButtonLabel = Create("TextLabel", {
+                Name = "ButtonLabel",
+                Parent = Button,
+                Size = UDim2.new(1, -20, 1, 0),
+                Position = UDim2.new(0, 10, 0, 0),
+                BackgroundTransparency = 1,
+                Text = ButtonName,
+                TextColor3 = DClib.Themes[DClib._theme]["Color Text"],
+                TextSize = DClib._settings.IconSize - 2,
+                Font = Enum.Font.GothamMedium,
+                TextXAlignment = "Left",
+            })
+            DClib:_registerInstance(ButtonLabel, "Text")
+            
+            Button.MouseEnter:Connect(function()
+                CreateTween(Button, "BackgroundTransparency", 0.2, 0.15)
+            end)
+            
+            Button.MouseLeave:Connect(function()
+                CreateTween(Button, "BackgroundTransparency", 0, 0.15)
+            end)
+            
+            Button.MouseButton1Click:Connect(function()
+                Callback()
+            end)
+            
+            return Button
+        end
+        
+        function Tab:AddToggle(Configs)
+            local ToggleName = Configs.Name or Configs.Title or "Toggle"
+            local Default = Configs.Default or false
+            local Callback = Configs.Callback or function() end
+            
+            local Toggle = Create("Frame", {
+                Name = "Toggle",
+                Parent = PanelScroll,
+                Size = UDim2.new(1, 0, 0, DClib._settings.ButtonHeight),
+                BackgroundTransparency = 1,
+            })
+            
+            local ToggleLabel = Create("TextLabel", {
+                Name = "ToggleLabel",
+                Parent = Toggle,
+                Size = UDim2.new(1, -50, 1, 0),
+                BackgroundTransparency = 1,
+                Text = ToggleName,
+                TextColor3 = DClib.Themes[DClib._theme]["Color Text"],
+                TextSize = DClib._settings.IconSize - 2,
+                Font = Enum.Font.GothamMedium,
+                TextXAlignment = "Left",
+            })
+            DClib:_registerInstance(ToggleLabel, "Text")
+            
+            local ToggleButton = Create("TextButton", {
+                Name = "ToggleButton",
+                Parent = Toggle,
+                Size = DClib._settings.ToggleSize,
+                Position = UDim2.new(1, -40, 0.5, -DClib._settings.ToggleSize.Y.Offset / 2),
+                BackgroundColor3 = DClib.Themes[DClib._theme]["Color Stroke"],
+                AutoButtonColor = false,
+                Text = "",
+            })
+            
+            MakeCorner(ToggleButton, UDim.new(0.5, 0))
+            
+            local ToggleKnob = Create("Frame", {
+                Name = "ToggleKnob",
+                Parent = ToggleButton,
+                Size = UDim2.new(0, DClib._settings.ToggleSize.Y.Offset - 4, 0, DClib._settings.ToggleSize.Y.Offset - 4),
+                Position = UDim2.new(0, 2, 0.5, -(DClib._settings.ToggleSize.Y.Offset - 4) / 2),
+                BackgroundColor3 = DClib.Themes[DClib._theme]["Color Theme"],
+            })
+            
+            MakeCorner(ToggleKnob, UDim.new(0.5, 0))
+            DClib:_registerInstance(ToggleKnob, "Theme")
+            
+            local function SetToggle(Value)
+                if Value then
+                    CreateTween(ToggleKnob, "Position", UDim2.new(1, -DClib._settings.ToggleSize.Y.Offset + 2, 0.5, -(DClib._settings.ToggleSize.Y.Offset - 4) / 2), 0.2)
+                    CreateTween(ToggleKnob, "BackgroundTransparency", 0, 0.2)
+                else
+                    CreateTween(ToggleKnob, "Position", UDim2.new(0, 2, 0.5, -(DClib._settings.ToggleSize.Y.Offset - 4) / 2), 0.2)
+                    CreateTween(ToggleKnob, "BackgroundTransparency", 0.5, 0.2)
+                end
+            end
+            
+            SetToggle(Default)
+            
+            ToggleButton.MouseButton1Click:Connect(function()
+                Default = not Default
+                SetToggle(Default)
+                Callback(Default)
+                self:_fireCallbacks("ToggleChanged", ToggleName, Default)
+            end)
+            
+            return {
+                Set = SetToggle,
+                Get = function() return Default end,
+            }
+        end
+        
+        function Tab:AddSlider(Configs)
+            local SliderName = Configs.Name or Configs.Title or "Slider"
+            local Min = Configs.Min or 0
+            local Max = Configs.Max or 100
+            local Default = Configs.Default or 50
+            local Callback = Configs.Callback or function() end
+            
+            local Slider = Create("Frame", {
+                Name = "Slider",
+                Parent = PanelScroll,
+                Size = UDim2.new(1, 0, 0, 40),
+                BackgroundTransparency = 1,
+            })
+            
+            local SliderLabel = Create("TextLabel", {
+                Name = "SliderLabel",
+                Parent = Slider,
+                Size = UDim2.new(1, -60, 0, 16),
+                Position = UDim2.new(0, 0, 0, 0),
+                BackgroundTransparency = 1,
+                Text = SliderName .. ": " .. tostring(Default),
+                TextColor3 = DClib.Themes[DClib._theme]["Color Text"],
+                TextSize = 11,
+                Font = Enum.Font.GothamMedium,
+                TextXAlignment = "Left",
+            })
+            DClib:_registerInstance(SliderLabel, "Text")
+            
+            local SliderBar = Create("Frame", {
+                Name = "SliderBar",
+                Parent = Slider,
+                Size = UDim2.new(1, 0, 0, 6),
+                Position = UDim2.new(0, 0, 1, -10),
+                BackgroundColor3 = DClib.Themes[DClib._theme]["Color Stroke"],
+            })
+            
+            MakeCorner(SliderBar)
+            
+            local SliderFill = Create("Frame", {
+                Name = "SliderFill",
+                Parent = SliderBar,
+                Size = UDim2.new((Default - Min) / (Max - Min), 0, 1, 0),
+                BackgroundColor3 = DClib.Themes[DClib._theme]["Color Theme"],
+            })
+            
+            MakeCorner(SliderFill)
+            DClib:_registerInstance(SliderFill, "Theme")
+            
+            local SliderKnob = Create("Frame", {
+                Name = "SliderKnob",
+                Parent = SliderBar,
+                Size = UDim2.new(0, 14, 0, 14),
+                Position = UDim2.new((Default - Min) / (Max - Min), -7, 0.5, -7),
+                BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+            })
+            
+            MakeCorner(SliderKnob)
+            
+            local function UpdateSlider(Value)
+                local Percentage = (Value - Min) / (Max - Min)
+                SliderFill.Size = UDim2.new(Percentage, 0, 1, 0)
+                SliderKnob.Position = UDim2.new(Percentage, -7, 0.5, -7)
+                SliderLabel.Text = SliderName .. ": " .. tostring(math.floor(Value))
+                Callback(Value)
+                self:_fireCallbacks("SliderChanged", SliderName, Value)
+            end
+            
+            local Dragging = false
+            SliderKnob.InputBegan:Connect(function(Input)
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    Dragging = true
+                    local Connection
+                    Connection = UserInputService.InputChanged:Connect(function(Input)
+                        if Dragging and Input.UserInputType == Enum.UserInputType.MouseMovement then
+                            local SliderPos = SliderBar.AbsolutePosition.X
+                            local SliderWidth = SliderBar.AbsoluteSize.X
+                            local MouseX = math.clamp(Input.Position.X - SliderPos, 0, SliderWidth)
+                            local Percentage = MouseX / SliderWidth
+                            local Value = Min + Percentage * (Max - Min)
+                            UpdateSlider(Value)
+                        end
+                    end)
+                    
+                    local EndConnection
+                    EndConnection = UserInputService.InputEnded:Connect(function()
+                        Dragging = false
+                        Connection:Disconnect()
+                        EndConnection:Disconnect()
+                    end)
+                end
+            end)
+            
+            UpdateSlider(Default)
+            
+            return {
+                Set = UpdateSlider,
+                Get = function() return Default end,
+            }
+        end
+        
+        return Tab
+    end
+    
+    -- Notify function
+    function Window:Notify(Configs)
+        local NotifyTitle = Configs.Title or "Notification"
+        local NotifyText = Configs.Text or ""
+        local Duration = Configs.Duration or 5
+        local NotifyType = Configs.Type or "Info"
+        
+        local colors = {
+            Info = self.Themes[self._theme]["Color Theme"],
+            Success = Color3.fromRGB(0, 255, 0),
+            Warning = Color3.fromRGB(255, 255, 0),
+            Error = Color3.fromRGB(255, 0, 0)
+        }
+        
+        local NotifyFrame = Create("Frame", {
+            Name = "NotifyFrame",
+            Parent = ScreenGui,
+            Size = UDim2.new(0, 300, 0, 80),
+            Position = UDim2.new(1, -320, 0, 10),
+            BackgroundColor3 = self.Themes[self._theme]["Color Hub 2"],
+            ZIndex = 10000,
+        })
+        
+        MakeCorner(NotifyFrame, self._settings.CornerRadius)
+        MakeStroke(NotifyFrame, self.Themes[self._theme]["Color Stroke"], 1)
+        
+        local Title = Create("TextLabel", {
+            Name = "Title",
+            Parent = NotifyFrame,
+            Size = UDim2.new(1, -10, 0, 20),
+            Position = UDim2.new(0, 5, 0, 5),
+            BackgroundTransparency = 1,
+            Text = NotifyTitle,
+            TextColor3 = colors[NotifyType] or self.Themes[self._theme]["Color Text"],
+            TextSize = 14,
+            Font = Enum.Font.GothamBold,
+            TextXAlignment = "Left",
+        })
+        self:_registerInstance(Title, "Theme")
+        
+        local Text = Create("TextLabel", {
+            Name = "Text",
+            Parent = NotifyFrame,
+            Size = UDim2.new(1, -10, 0, 40),
+            Position = UDim2.new(0, 5, 0, 25),
+            BackgroundTransparency = 1,
+            Text = NotifyText,
+            TextColor3 = self.Themes[self._theme]["Color Dark Text"],
+            TextSize = 12,
+            Font = Enum.Font.Gotham,
+            TextWrapped = true,
+            TextXAlignment = "Left",
+        })
+        self:_registerInstance(Text, "DarkText")
+        
+        CreateTween(NotifyFrame, "Position", UDim2.new(1, -10, 0, 10), 0.5, Enum.EasingStyle.Quad)
+        
+        task.delay(Duration, function()
+            CreateTween(NotifyFrame, "Position", UDim2.new(1, -320, 0, 10), 0.5, Enum.EasingStyle.Quad, function()
+                NotifyFrame:Destroy()
+            end)
+        end)
+    end
+    
+    -- Dialog function
+    function Window:Dialog(Configs)
+        local DialogTitle = Configs.Title or "Dialog"
+        local DialogText = Configs.Text or ""
+        local Options = Configs.Options or {}
+        
+        local DialogOverlay = Create("Frame", {
+            Name = "DialogOverlay",
+            Parent = ScreenGui,
+            Size = UDim2.new(1, 0, 1, 0),
+            BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+            BackgroundTransparency = 0.6,
+            ZIndex = 9999,
+        })
+        
+        local DialogFrame = Create("Frame", {
+            Name = "DialogFrame",
+            Parent = DialogOverlay,
+            Size = UDim2.new(0, 300, 0, 150),
+            Position = UDim2.new(0.5, -150, 0.5, -75),
+            BackgroundColor3 = self.Themes[self._theme]["Color Hub 2"],
+        })
+        
+        MakeCorner(DialogFrame, self._settings.CornerRadius)
+        
+        local Title = Create("TextLabel", {
+            Name = "Title",
+            Parent = DialogFrame,
+            Size = UDim2.new(1, -20, 0, 25),
+            Position = UDim2.new(0, 10, 0, 5),
+            BackgroundTransparency = 1,
+            Text = DialogTitle,
+            TextColor3 = self.Themes[self._theme]["Color Text"],
+            TextSize = 14,
+            Font = Enum.Font.GothamBold,
+            TextXAlignment = "Left",
+        })
+        
+        local Text = Create("TextLabel", {
+            Name = "Text",
+            Parent = DialogFrame,
+            Size = UDim2.new(1, -20, 0, 50),
+            Position = UDim2.new(0, 10, 0, 30),
+            BackgroundTransparency = 1,
+            Text = DialogText,
+            TextColor3 = self.Themes[self._theme]["Color Dark Text"],
+            TextSize = 12,
+            Font = Enum.Font.Gotham,
+            TextWrapped = true,
+            TextXAlignment = "Left",
+        })
+        
+        local ButtonContainer = Create("Frame", {
+            Name = "ButtonContainer",
+            Parent = DialogFrame,
+            Size = UDim2.new(1, -20, 0, 40),
+            Position = UDim2.new(0, 10, 1, -45),
+            BackgroundTransparency = 1,
+        })
+        
+        local ButtonLayout = Create("UIListLayout", {
+            Parent = ButtonContainer,
+            Padding = UDim.new(0, 10),
+            FillDirection = "Horizontal",
+            HorizontalAlignment = "Center",
+            VerticalAlignment = "Center",
+        })
+        
+        local function CloseDialog()
+            CreateTween(DialogFrame, "Size", UDim2.new(0, 0, 0, 0), 0.2)
+            CreateTween(DialogOverlay, "Transparency", 1, 0.2, nil, function()
+                DialogOverlay:Destroy()
+            end)
+        end
+        
+        for _, Option in ipairs(Options) do
+            local OptionName = Option[1]
+            local OptionCallback = Option[2]
+            
+            local Button = Create("TextButton", {
+                Name = "DialogButton_" .. OptionName,
+                Parent = ButtonContainer,
+                Size = UDim2.new(0, 100, 0, 30),
+                BackgroundColor3 = self.Themes[self._theme]["Color Theme"],
+                AutoButtonColor = false,
+                Text = OptionName,
+                TextColor3 = self.Themes[self._theme]["Color Text"],
+                TextSize = 12,
+                Font = Enum.Font.GothamBold,
+            })
+            
+            MakeCorner(Button, UDim.new(0, 4))
+            
+            Button.MouseButton1Click:Connect(function()
+                if OptionCallback then
+                    OptionCallback()
+                end
+                CloseDialog()
+            end)
+        end
+    end
+    
+    -- Return window object
+    return Window
+end
+
+-- ============================================
+-- RETURN DCLIB
+-- ============================================
+return DClib
