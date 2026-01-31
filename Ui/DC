@@ -1,884 +1,184 @@
 --[[
     DClib - Dac Cau Library
-    A modern Roblox UI library with rounded design, animations, and themes
-    
-    Version: 1.0.0
-    Created: 2026-01-31
+    Roblox UI Library với rounded design
 ]]
 
--- ============================================
--- SERVICES
--- ============================================
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
-local MarketplaceService = game:GetService("MarketplaceService")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 
 local Player = Players.LocalPlayer
-local PlayerMouse = Player:GetMouse()
+local DClib = {}
 
--- Lấy ViewportSize an toàn
-local function GetViewportSize()
-    local success, result = pcall(function()
-        return workspace.CurrentCamera.ViewportSize
-    end)
-    if success then
-        return result
-    end
-    return Vector2.new(800, 600) -- Default fallback
-end
-local ViewportSize = GetViewportSize()
-
--- ============================================
--- CORNER RADIUS CONSTANTS
--- ============================================
-local CornerRadius = {
-    Small = UDim.new(0, 4),
-    Medium = UDim.new(0, 6),
-    Large = UDim.new(0, 8),
-    Full = UDim.new(0, 9999)
-}
-
--- ============================================
--- SIZE PRESETS
--- ============================================
-local SizePresets = {
-    Small = {
-        WindowSize = UDim2.new(0, 450, 0, 320),
-        ButtonHeight = 30,
-        ToggleSize = UDim2.new(0, 35, 0, 16),
-        IconSize = 12,
-        CornerRadius = UDim.new(0, 4)
-    },
-    Normal = {
-        WindowSize = UDim2.new(0, 550, 0, 380),
-        ButtonHeight = 35,
-        ToggleSize = UDim2.new(0, 35, 0, 18),
-        IconSize = 14,
-        CornerRadius = UDim.new(0, 6)
-    },
-    Large = {
-        WindowSize = UDim2.new(0, 650, 0, 450),
-        ButtonHeight = 40,
-        ToggleSize = UDim2.new(0, 40, 0, 20),
-        IconSize = 16,
-        CornerRadius = UDim.new(0, 8)
-    },
-    ExtraLarge = {
-        WindowSize = UDim2.new(0, 750, 0, 520),
-        ButtonHeight = 45,
-        ToggleSize = UDim2.new(0, 45, 0, 22),
-        IconSize = 18,
-        CornerRadius = UDim.new(0, 10)
-    }
-}
-
--- ============================================
--- THEMES (27 Themes)
--- ============================================
-local Themes = {
+-- Theme mặc định
+DClib.Theme = "Dark"
+DClib.Themes = {
     Dark = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(40, 40, 40)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(47.5, 47.5, 47.5)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(40, 40, 40))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(45, 45, 45),
-        ["Color Stroke"] = Color3.fromRGB(65, 65, 65),
-        ["Color Theme"] = Color3.fromRGB(88, 101, 242),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(190, 190, 190)
-    },
-    Light = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(220, 220, 220)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(235, 235, 235)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(220, 220, 220))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(225, 225, 225),
-        ["Color Stroke"] = Color3.fromRGB(240, 240, 240),
-        ["Color Theme"] = Color3.fromRGB(0, 123, 255),
-        ["Color Text"] = Color3.fromRGB(10, 10, 10),
-        ["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
-    },
-    Darker = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(25, 25, 25)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(32.5, 32.5, 32.5)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(25, 25, 25))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(30, 30, 30),
-        ["Color Stroke"] = Color3.fromRGB(40, 40, 40),
-        ["Color Theme"] = Color3.fromRGB(88, 101, 242),
-        ["Color Text"] = Color3.fromRGB(243, 243, 243),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    Purple = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27.5, 25, 30)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(32.5, 32.5, 32.5)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(27.5, 25, 30))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(30, 30, 30),
-        ["Color Stroke"] = Color3.fromRGB(40, 40, 40),
-        ["Color Theme"] = Color3.fromRGB(150, 0, 255),
-        ["Color Text"] = Color3.fromRGB(240, 240, 240),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    Blue = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(30, 50, 100)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(40, 60, 120)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(30, 50, 100))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(35, 55, 110),
-        ["Color Stroke"] = Color3.fromRGB(50, 70, 130),
-        ["Color Theme"] = Color3.fromRGB(0, 150, 255),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    Green = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(30, 60, 30)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(40, 80, 40)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(30, 60, 30))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(35, 70, 35),
-        ["Color Stroke"] = Color3.fromRGB(50, 90, 50),
-        ["Color Theme"] = Color3.fromRGB(0, 200, 0),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    Red = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(80, 20, 20)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(100, 30, 30)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(80, 20, 20))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(90, 25, 25),
-        ["Color Stroke"] = Color3.fromRGB(110, 40, 40),
-        ["Color Theme"] = Color3.fromRGB(255, 0, 0),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    Orange = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(100, 50, 0)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(120, 70, 20)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 50, 0))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(110, 60, 10),
-        ["Color Stroke"] = Color3.fromRGB(130, 80, 30),
-        ["Color Theme"] = Color3.fromRGB(255, 165, 0),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    Yellow = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(150, 150, 0)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(180, 180, 30)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(150, 150, 0))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(160, 160, 10),
-        ["Color Stroke"] = Color3.fromRGB(190, 190, 40),
-        ["Color Theme"] = Color3.fromRGB(255, 255, 0),
-        ["Color Text"] = Color3.fromRGB(10, 10, 10),
-        ["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
-    },
-    Pink = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(100, 20, 50)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(120, 40, 70)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 20, 50))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(110, 30, 60),
-        ["Color Stroke"] = Color3.fromRGB(130, 50, 80),
-        ["Color Theme"] = Color3.fromRGB(255, 0, 150),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    Cyan = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 80, 80)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(20, 100, 100)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 80, 80))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(10, 90, 90),
-        ["Color Stroke"] = Color3.fromRGB(30, 110, 110),
-        ["Color Theme"] = Color3.fromRGB(0, 255, 255),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    Teal = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 60, 60)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(20, 80, 80)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 60, 60))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(10, 70, 70),
-        ["Color Stroke"] = Color3.fromRGB(30, 90, 90),
-        ["Color Theme"] = Color3.fromRGB(0, 128, 128),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    -- Advanced Themes
-    Gray = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(100, 100, 100)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(120, 120, 120)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 100, 100))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(110, 110, 110),
-        ["Color Stroke"] = Color3.fromRGB(130, 130, 130),
-        ["Color Theme"] = Color3.fromRGB(150, 150, 150),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    PastelDream = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(250, 230, 240)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(240, 240, 250)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(250, 230, 240))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(245, 235, 245),
-        ["Color Stroke"] = Color3.fromRGB(220, 210, 230),
-        ["Color Theme"] = Color3.fromRGB(255, 182, 193),
-        ["Color Text"] = Color3.fromRGB(50, 50, 50),
-        ["Color Dark Text"] = Color3.fromRGB(100, 100, 100)
-    },
-    VintageRose = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(200, 150, 160)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(220, 170, 180)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(200, 150, 160))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(210, 160, 170),
-        ["Color Stroke"] = Color3.fromRGB(180, 130, 140),
-        ["Color Theme"] = Color3.fromRGB(255, 215, 0),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    ForestWhisper = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(50, 80, 50)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(70, 100, 70)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(50, 80, 50))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(60, 90, 60),
-        ["Color Stroke"] = Color3.fromRGB(40, 70, 40),
-        ["Color Theme"] = Color3.fromRGB(34, 139, 34),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    OceanBreeze = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(100, 150, 200)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(120, 170, 220)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(100, 150, 200))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(110, 160, 210),
-        ["Color Stroke"] = Color3.fromRGB(80, 130, 180),
-        ["Color Theme"] = Color3.fromRGB(0, 191, 255),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    LavenderField = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(180, 150, 220)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(200, 170, 240)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(180, 150, 220))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(190, 160, 230),
-        ["Color Stroke"] = Color3.fromRGB(160, 130, 200),
-        ["Color Theme"] = Color3.fromRGB(138, 43, 226),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    SunsetGlow = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 100, 100)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 150, 120)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 100, 100))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(255, 120, 110),
-        ["Color Stroke"] = Color3.fromRGB(200, 80, 80),
-        ["Color Theme"] = Color3.fromRGB(255, 69, 0),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    EarthyTones = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(120, 80, 40)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(140, 100, 60)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(120, 80, 40))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(130, 90, 50),
-        ["Color Stroke"] = Color3.fromRGB(100, 60, 20),
-        ["Color Theme"] = Color3.fromRGB(160, 82, 45),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    MysticPurple = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(70, 30, 100)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(90, 50, 120)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(70, 30, 100))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(80, 40, 110),
-        ["Color Stroke"] = Color3.fromRGB(50, 20, 80),
-        ["Color Theme"] = Color3.fromRGB(128, 0, 128),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    CandyPop = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 200, 200)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 220, 220)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 200, 200))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(255, 210, 210),
-        ["Color Stroke"] = Color3.fromRGB(230, 180, 180),
-        ["Color Theme"] = Color3.fromRGB(255, 105, 180),
-        ["Color Text"] = Color3.fromRGB(50, 50, 50),
-        ["Color Dark Text"] = Color3.fromRGB(100, 100, 100)
-    },
-    RetroWave = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(0, 255, 255)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 200, 200)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 255, 255))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(0, 230, 230),
-        ["Color Stroke"] = Color3.fromRGB(0, 180, 180),
-        ["Color Theme"] = Color3.fromRGB(255, 0, 255),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    Spring = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(144, 238, 144)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(173, 216, 230)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(144, 238, 144))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(152, 251, 152),
-        ["Color Stroke"] = Color3.fromRGB(255, 182, 193),
-        ["Color Theme"] = Color3.fromRGB(255, 20, 147),
-        ["Color Text"] = Color3.fromRGB(0, 0, 0),
-        ["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
-    },
-    Summer = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 0)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 165, 0)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 255, 0))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(255, 215, 0),
-        ["Color Stroke"] = Color3.fromRGB(0, 191, 255),
-        ["Color Theme"] = Color3.fromRGB(0, 255, 255),
-        ["Color Text"] = Color3.fromRGB(0, 0, 0),
-        ["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
-    },
-    Autumn = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 140, 0)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(160, 82, 45)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 140, 0))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(255, 69, 0),
-        ["Color Stroke"] = Color3.fromRGB(139, 69, 19),
-        ["Color Theme"] = Color3.fromRGB(255, 0, 0),
-        ["Color Text"] = Color3.fromRGB(245, 245, 245),
-        ["Color Dark Text"] = Color3.fromRGB(180, 180, 180)
-    },
-    Winter = {
-        ["Color Hub 1"] = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 255, 255)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(173, 216, 230)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 255, 255))
-        }),
-        ["Color Hub 2"] = Color3.fromRGB(240, 248, 255),
-        ["Color Stroke"] = Color3.fromRGB(192, 192, 192),
-        ["Color Theme"] = Color3.fromRGB(70, 130, 180),
-        ["Color Text"] = Color3.fromRGB(0, 0, 0),
-        ["Color Dark Text"] = Color3.fromRGB(50, 50, 50)
+        Background = Color3.fromRGB(45, 45, 45),
+        Stroke = Color3.fromRGB(65, 65, 65),
+        Text = Color3.fromRGB(245, 245, 245),
+        Text2 = Color3.fromRGB(190, 190, 190),
+        Accent = Color3.fromRGB(88, 101, 242)
     }
 }
 
--- ============================================
--- ICONS (Placeholder with common icons)
--- ============================================
-local Icons = {
-    -- UI Icons
-    close = "rbxassetid://10747384394",
-    minimize = "rbxassetid://10734896206",
-    settings = "rbxassetid://10734950309",
-    check = "rbxassetid://10709790644",
-    home = "rbxassetid://10723407389",
-    user = "rbxassetid://10747373176",
-    users = "rbxassetid://10747373426",
-    message = "rbxassetid://10734888000",
-    bell = "rbxassetid://10709775704",
-    
-    -- Game Icons
-    sword = "rbxassetid://10734975486",
-    shield = "rbxassetid://10734951847",
-    crown = "rbxassetid://10709818626",
-    trophy = "rbxassetid://10747363809",
-    
-    -- Tool Icons
-    wrench = "rbxassetid://10747383470",
-    hammer = "rbxassetid://10723405360",
-    
-    -- Navigation
-    chevronright = "rbxassetid://10709791437",
-    chevrondown = "rbxassetid://10709790948",
-    chevronup = "rbxassetid://10709791523",
-    
-    -- System
-    maximize = "rbxassetid://10734886735",
-    restore = "rbxassetid://10734895698",
-    menu = "rbxassetid://10734887784",
-    
-    -- Add more icons as needed
-}
-
--- ============================================
--- COLOR PRESETS FOR COLOR PICKER
--- ============================================
-local ColorPresets = {
-    Color3.fromRGB(255, 0, 0),     -- Red
-    Color3.fromRGB(255, 127, 0),   -- Orange
-    Color3.fromRGB(255, 255, 0),   -- Yellow
-    Color3.fromRGB(0, 255, 0),     -- Green
-    Color3.fromRGB(0, 255, 255),   -- Cyan
-    Color3.fromRGB(0, 0, 255),     -- Blue
-    Color3.fromRGB(128, 0, 128),   -- Purple
-    Color3.fromRGB(255, 0, 255),   -- Magenta
-    Color3.fromRGB(255, 255, 255), -- White
-    Color3.fromRGB(0, 0, 0),       -- Black
-    Color3.fromRGB(88, 101, 242),  -- Blurple
-    Color3.fromRGB(88, 242, 101),  -- Green theme
-}
-
--- ============================================
--- DCLIB MAIN OBJECT
--- ============================================
-local DClib = {
-    Themes = Themes,
-    Icons = Icons,
-    ColorPresets = ColorPresets,
-    CornerRadius = CornerRadius,
-    SizePresets = SizePresets,
-    
-    -- Internal state
-    _theme = "Dark",
-    _sizePreset = "Normal",
-    _autoScale = true,
-    _instances = {},
-    _connections = {},
-    _callbacks = {},
-    _settings = {},
-}
-
--- Default settings
-DClib._settings = {
-    WindowSize = SizePresets.Normal.WindowSize,
-    ButtonHeight = SizePresets.Normal.ButtonHeight,
-    ToggleSize = SizePresets.Normal.ToggleSize,
-    IconSize = SizePresets.Normal.IconSize,
-    CornerRadius = SizePresets.Normal.CornerRadius,
-}
-
--- ============================================
--- UTILITY FUNCTIONS
--- ============================================
-local function Create(InstanceType, Props, Children)
-    local instance = Instance.new(InstanceType)
-    
-    -- Apply properties
-    if Props then
-        for property, value in pairs(Props) do
-            instance[property] = value
-        end
+-- Hàm tạo instance
+local function Create(instanceType, properties)
+    local instance = Instance.new(instanceType)
+    for prop, value in pairs(properties or {}) do
+        instance[prop] = value
     end
-    
-    -- Add children
-    if Children then
-        for _, child in ipairs(Children) do
-            child.Parent = instance
-        end
-    end
-    
     return instance
 end
 
-local function SetProps(Instance, Props)
-    if Props then
-        for property, value in pairs(Props) do
-            Instance[property] = value
-        end
-    end
-    return Instance
-end
-
-local function SetChildren(Instance, Children)
-    if Children then
-        for _, child in ipairs(Children) do
-            child.Parent = Instance
-        end
-    end
-    return Instance
-end
-
-local function MakeCorner(Parent, Radius)
+-- Tạo corner tròn
+local function MakeCorner(parent, radius)
     local corner = Create("UICorner", {
-        Parent = Parent,
-        CornerRadius = Radius or DClib._settings.CornerRadius
+        Parent = parent,
+        CornerRadius = UDim.new(0, radius or 8)
     })
     return corner
 end
 
-local function MakeStroke(Parent, Color, Thickness)
+-- Tạo stroke
+local function MakeStroke(parent, color, thickness)
     local stroke = Create("UIStroke", {
-        Parent = Parent,
-        Color = Color or DClib.Themes[DClib._theme]["Color Stroke"],
-        Thickness = Thickness or 1,
-        ApplyStrokeMode = "Border"
+        Parent = parent,
+        Color = color or DClib.Themes[DClib.Theme].Stroke,
+        Thickness = thickness or 1
     })
     return stroke
 end
 
-local function MakePadding(Parent, Padding)
-    local padding = Create("UIPadding", {
-        Parent = Parent,
-        PaddingLeft = Padding or UDim.new(0, 10),
-        PaddingRight = UDim.new(0, 10),
-        PaddingTop = UDim.new(0, 10),
-        PaddingBottom = UDim.new(0, 10)
-    })
-    return padding
-end
-
-local function MakeListLayout(Parent, Padding, Spacing)
-    local layout = Create("UIListLayout", {
-        Parent = Parent,
-        Padding = Padding or UDim.new(0, 5),
-        SortOrder = "LayoutOrder",
-        VerticalAlignment = "Center"
-    })
-    return layout
-end
-
--- Tween helper
-local function CreateTween(Instance, Property, TargetValue, Duration, EasingStyle, Callback)
-    local tweenInfo = TweenInfo.new(
-        Duration or 0.25,
-        EasingStyle or Enum.EasingStyle.Quint,
-        Enum.EasingDirection.Out
-    )
-    
-    local tween = TweenService:Create(Instance, tweenInfo, {
-        [Property] = TargetValue
-    })
-    
-    tween.Completed:Connect(function()
-        if Callback then Callback() end
-    end)
-    
+-- Hàm tween
+local function Tween(instance, properties, duration)
+    local tweenInfo = TweenInfo.new(duration or 0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(instance, tweenInfo, properties)
     tween:Play()
     return tween
 end
 
--- ============================================
--- THEME MANAGEMENT
--- ============================================
-function DClib:SetTheme(ThemeName)
-    if not self.Themes[ThemeName] then return end
+-- Tạo Window
+function DClib:MakeWindow(config)
+    local name = config.Name or "DClib"
+    local subtitle = config.SubTitle or ""
     
-    self._theme = ThemeName
-    local theme = self.Themes[ThemeName]
-    
-    -- Update all registered instances
-    for _, data in ipairs(self._instances) do
-        local instance = data.Instance
-        local type = data.Type
-        
-        if type == "Frame" or type == "Button" then
-            instance.BackgroundColor3 = theme["Color Hub 2"]
-        elseif type == "Gradient" then
-            instance.Color = theme["Color Hub 1"]
-        elseif type == "Stroke" then
-            instance.Color = theme["Color Stroke"]
-        elseif type == "Theme" then
-            instance.Color = theme["Color Theme"]
-        elseif type == "Text" then
-            instance.TextColor3 = theme["Color Text"]
-        elseif type == "DarkText" then
-            instance.TextColor3 = theme["Color Dark Text"]
-        elseif type == "ScrollBar" then
-            instance.ScrollBarImageColor3 = theme["Color Theme"]
-        end
-    end
-    
-    -- Fire callbacks
-    self:_fireCallbacks("ThemeChanged", ThemeName)
-end
-
-function DClib:GetTheme()
-    return self._theme
-end
-
-function DClib:GetThemeColor(ColorName)
-    return self.Themes[self._theme][ColorName]
-end
-
-function DClib:SetThemeColor(ColorName, Color)
-    self.Themes[self._theme][ColorName] = Color
-    self:SetTheme(self._theme) -- Refresh
-end
-
--- ============================================
--- SIZE PRESET MANAGEMENT
--- ============================================
-function DClib:SetSizePreset(PresetName)
-    if not self.SizePresets[PresetName] then return end
-    
-    self._sizePreset = PresetName
-    local preset = self.SizePresets[PresetName]
-    
-    self._settings.WindowSize = preset.WindowSize
-    self._settings.ButtonHeight = preset.ButtonHeight
-    self._settings.ToggleSize = preset.ToggleSize
-    self._settings.IconSize = preset.IconSize
-    self._settings.CornerRadius = preset.CornerRadius
-    
-    self:_fireCallbacks("SizeChanged", PresetName)
-end
-
-function DClib:GetSizePreset()
-    return self._sizePreset
-end
-
-function DClib:GetCurrentSettings()
-    return self._settings
-end
-
-function DClib:SetAutoScale(Enabled)
-    self._autoScale = Enabled
-    if Enabled then
-        self:AutoScale()
-    end
-end
-
-function DClib:AutoScale()
-    local ScreenY = ViewportSize.Y
-    
-    if ScreenY < 600 then
-        self:SetSizePreset("Small")
-    elseif ScreenY < 800 then
-        self:SetSizePreset("Normal")
-    elseif ScreenY < 1000 then
-        self:SetSizePreset("Large")
-    else
-        self:SetSizePreset("ExtraLarge")
-    end
-end
-
--- ============================================
--- CALLBACK SYSTEM
--- ============================================
-function DClib:_initCallbacks()
-    self._callbacks = {
-        ThemeChanged = {},
-        SizeChanged = {},
-        TabSelected = {},
-        ToggleChanged = {},
-        DropdownChanged = {},
-        SliderChanged = {},
-    }
-end
-
-function DClib:On(EventName, Callback)
-    if not self._callbacks[EventName] then return end
-    table.insert(self._callbacks[EventName], Callback)
-    return {
-        Disconnect = function()
-            for i, cb in ipairs(self._callbacks[EventName]) do
-                if cb == Callback then
-                    table.remove(self._callbacks[EventName], i)
-                    break
-                end
-            end
-        end
-    }
-end
-
-function DClib:_fireCallbacks(EventName, ...)
-    if not self._callbacks[EventName] then return end
-    for _, callback in ipairs(self._callbacks[EventName]) do
-        task.spawn(callback, ...)
-    end
-end
-
--- ============================================
--- INSTANCE REGISTRATION
--- ============================================
-function DClib:_registerInstance(Instance, Type)
-    table.insert(self._instances, {
-        Instance = Instance,
-        Type = Type
-    })
-end
-
--- ============================================
--- ICON MANAGEMENT
--- ============================================
-function DClib:GetIcon(IconName)
-    if not IconName then return nil end
-    
-    -- Return as-is if it's already an asset ID
-    if string.find(IconName, "rbxassetid://") then
-        return IconName
-    end
-    
-    -- Look up in icons table
-    return self.Icons[IconName] or nil
-end
-
--- ============================================
--- MAIN WINDOW CREATION
--- ============================================
-function DClib:MakeWindow(Configs)
-    local WindowTitle = Configs.Name or Configs.Title or "DClib"
-    local SubTitle = Configs.SubTitle or "by Dac Cau"
-    local SaveFolder = Configs.SaveFolder or false
-    
-    -- Initialize callbacks
-    self:_initCallbacks()
-    
-    -- Auto scale if enabled
-    if self._autoScale then
-        self:AutoScale()
-    end
-    
-    -- Create ScreenGui
+    -- ScreenGui
     local ScreenGui = Create("ScreenGui", {
         Name = "DClib_ScreenGui",
         Parent = RunService:IsClient() and CoreGui or Player:WaitForChild("PlayerGui"),
         ResetOnSpawn = false,
-        IgnoreGuiInset = true,
+        IgnoreGuiInset = true
     })
     
-    -- Create main frame
+    -- Main Frame (tròn)
     local MainFrame = Create("Frame", {
         Name = "MainFrame",
         Parent = ScreenGui,
-        Size = self._settings.WindowSize,
-        Position = UDim2.new(0.5, -self._settings.WindowSize.X.Offset / 2, 0.5, -self._settings.WindowSize.Y.Offset / 2),
-        BackgroundColor3 = self.Themes[self._theme]["Color Hub 2"],
-        BackgroundTransparency = 0,
-        ClipsDescendants = true,
-        BorderSizePixel = 0,
+        Size = UDim2.new(0, 550, 0, 380),
+        Position = UDim2.new(0.5, -275, 0.5, -190),
+        BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
+        BorderSizePixel = 0
     })
     
-    -- Add corner
-    MakeCorner(MainFrame, self._settings.CornerRadius)
-    MakeStroke(MainFrame, self.Themes[self._theme]["Color Stroke"], 1)
+    r tròn cho main frame
+    MakeCorner(MainFrame, 12)
+    MakeStroke(MainFrame, DClib.Themes[DClib.Theme].Stroke, 1)
     
-    -- Register main frame
-    self:_registerInstance(MainFrame, "Frame")
-    
-    -- Create title bar
+    -- Title Bar
     local TitleBar = Create("Frame", {
         Name = "TitleBar",
         Parent = MainFrame,
-        Size = UDim2.new(1, 0, 0, 30),
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 0, 0, 0),
+        Size = UDim2.new(1, 0, 0, 35),
+        BackgroundTransparency = 1
     })
     
     local TitleLabel = Create("TextLabel", {
-        Name = "TitleLabel",
+        Name = "Title",
         Parent = TitleBar,
-        Size = UDim2.new(1, -60, 1, 0),
+        Size = UDim2.new(1, -70, 1, 0),
         Position = UDim2.new(0, 10, 0, 0),
         BackgroundTransparency = 1,
-        Text = WindowTitle,
-        TextColor3 = self.Themes[self._theme]["Color Text"],
+        Text = name,
+        TextColor3 = DClib.Themes[DClib.Theme].Text,
         TextXAlignment = "Left",
-        TextYAlignment = "Center",
         Font = Enum.Font.GothamBold,
-        TextSize = 14,
+        TextSize = 14
     })
-    self:_registerInstance(TitleLabel, "Text")
     
     local SubTitleLabel = Create("TextLabel", {
-        Name = "SubTitleLabel",
+        Name = "SubTitle",
         Parent = TitleBar,
-        Size = UDim2.new(1, -70, 0, 12),
+        Size = UDim2.new(1, -80, 0, 12),
         Position = UDim2.new(0, 10, 1, -12),
         BackgroundTransparency = 1,
-        Text = SubTitle,
-        TextColor3 = self.Themes[self._theme]["Color Dark Text"],
+        Text = subtitle,
+        TextColor3 = DClib.Themes[DClib.Theme].Text2,
         TextXAlignment = "Left",
-        TextYAlignment = "Top",
         Font = Enum.Font.Gotham,
-        TextSize = 10,
+        TextSize = 10
     })
-    self:_registerInstance(SubTitleLabel, "DarkText")
     
-    -- Create close button
-    local CloseButton = Create("ImageButton", {
+    -- Close Button
+    local CloseBtn = Create("ImageButton", {
         Name = "CloseButton",
         Parent = TitleBar,
-        Size = UDim2.new(0, 14, 0, 14),
-        Position = UDim2.new(1, -24, 0.5, -7),
+        Size = UDim2.new(0, 16, 0, 16),
+        Position = UDim2.new(1, -24, 0.5, -8),
         BackgroundTransparency = 1,
-        Image = self.Icons.close,
-        ImageColor3 = self.Themes[self._theme]["Color Dark Text"],
+        Image = "rbxassetid://10747384394",
+        ImageColor3 = DClib.Themes[DClib.Theme].Text2
     })
     
-    CloseButton.MouseButton1Click:Connect(function()
-        CreateTween(MainFrame, "Size", UDim2.new(0, 0, 0, 0), 0.3, Enum.EasingStyle.Quad)
-        CreateTween(MainFrame, "Transparency", 1, 0.3, nil, function()
-            ScreenGui:Destroy()
-        end)
+    CloseBtn.MouseButton1Click:Connect(function()
+        Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.2)
+        Tween(MainFrame, {Transparency = 1}, 0.2)
+        task.wait(0.2)
+        ScreenGui:Destroy()
     end)
     
-    -- Create minimize button placeholder (can be customized)
-    local MinimizeButton = Create("ImageButton", {
+    -- Minimize Button
+    local MinimizeBtn = Create("ImageButton", {
         Name = "MinimizeButton",
         Parent = TitleBar,
-        Size = UDim2.new(0, 14, 0, 14),
-        Position = UDim2.new(1, -44, 0.5, -7),
+        Size = UDim2.new(0, 16, 0, 16),
+        Position = UDim2.new(1, -44, 0.5, -8),
         BackgroundTransparency = 1,
-        Image = self.Icons.minimize,
-        ImageColor3 = self.Themes[self._theme]["Color Dark Text"],
+        Image = "rbxassetid://10734896206",
+        ImageColor3 = DClib.Themes[DClib.Theme].Text2
     })
     
-    -- Create content container
-    local ContentContainer = Create("Frame", {
-        Name = "ContentContainer",
+    local minimized = false
+    MinimizeBtn.MouseButton1Click:Connect(function()
+        if minimized then
+            Tween(MainFrame, {Size = UDim2.new(0, 550, 0, 380)}, 0.25)
+            minimized = false
+        else
+            Tween(MainFrame, {Size = UDim2.new(0, 550, 0, 35)}, 0.25)
+            minimized = true
+        end
+    end)
+    
+    -- Content Container
+    local Content = Create("Frame", {
+        Name = "Content",
         Parent = MainFrame,
-        Size = UDim2.new(1, 0, 1, -30),
-        Position = UDim2.new(0, 0, 0, 30),
+        Size = UDim2.new(1, 0, 1, -35),
+        Position = UDim2.new(0, 0, 0, 35),
         BackgroundTransparency = 1,
-        ClipsDescendants = true,
+        ClipsDescendants = true
     })
     
-    -- Create tab area (top of content)
+    -- Tab Area
     local TabArea = Create("Frame", {
         Name = "TabArea",
-        Parent = ContentContainer,
-        Size = UDim2.new(1, 0, 0, 40),
-        Position = UDim2.new(0, 0, 0, 0),
-        BackgroundTransparency = 1,
+        Parent = Content,
+        Size = UDim2.new(1, 0, 0, 45),
+        BackgroundTransparency = 1
     })
     
-    -- Create scroll frame for tabs
     local TabScroll = Create("ScrollingFrame", {
         Name = "TabScroll",
         Parent = TabArea,
@@ -887,574 +187,497 @@ function DClib:MakeWindow(Configs)
         BackgroundTransparency = 1,
         ScrollBarThickness = 0,
         ScrollingDirection = "X",
-        CanvasSize = UDim2.new(0, 0, 0, 0),
-        AutomaticCanvasSize = "X",
+        AutomaticCanvasSize = "X"
     })
     
-    local TabListLayout = Create("UIListLayout", {
+    local TabLayout = Create("UIListLayout", {
         Parent = TabScroll,
         Padding = UDim.new(0, 5),
         FillDirection = "Horizontal",
         VerticalAlignment = "Center",
-        HorizontalAlignment = "Center",
+        HorizontalAlignment = "Center"
     })
     
-    -- Create main content area
+    -- Main Content
     local MainContent = Create("Frame", {
         Name = "MainContent",
-        Parent = ContentContainer,
-        Size = UDim2.new(1, -20, 1, -50),
-        Position = UDim2.new(0, 10, 0, 50),
-        BackgroundTransparency = 1,
-        ClipsDescendants = true,
+        Parent = Content,
+        Size = UDim2.new(1, -20, 1, -55),
+        Position = UDim2.new(0, 10, 0, 55),
+        BackgroundTransparency = 1
     })
     
-    -- Scroll frame for content
     local ContentScroll = Create("ScrollingFrame", {
         Name = "ContentScroll",
         Parent = MainContent,
         Size = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1,
         ScrollBarThickness = 4,
-        ScrollBarImageColor3 = self.Themes[self._theme]["Color Theme"],
-        ScrollBarImageTransparency = 0.2,
-        CanvasSize = UDim2.new(0, 0, 0, 0),
-        AutomaticCanvasSize = "Y",
-        ScrollingDirection = "Y",
+        ScrollBarImageColor3 = DClib.Themes[DClib.Theme].Accent,
+        AutomaticCanvasSize = "Y"
     })
-    self:_registerInstance(ContentScroll, "ScrollBar")
     
-    MakePadding(ContentScroll)
-    MakeListLayout(ContentScroll)
+    local ContentLayout = Create("UIListLayout", {
+        Parent = ContentScroll,
+        Padding = UDim.new(0, 10),
+        SortOrder = "LayoutOrder"
+    })
     
-    -- Tab buttons storage
-    local TabButtons = {}
-    local TabPanels = {}
-    local ActiveTab = nil
-    
-    -- Window object to return
-    local Window = {}
+    local Padding = Create("UIPadding", {
+        Parent = ContentScroll,
+        PaddingLeft = UDim.new(0, 10),
+        PaddingRight = UDim.new(0, 10),
+        PaddingTop = UDim.new(0, 10),
+        PaddingBottom = UDim.new(0, 10)
+    })
     
     -- Drag functionality
-    local Dragging = false
-    local DragStart = nil
-    local StartPos = nil
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
     
-    TitleBar.InputBegan:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-            Dragging = true
-            DragStart = Input.Position
-            StartPos = MainFrame.Position
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
             
-            local Connection
-            Connection = UserInputService.InputChanged:Connect(function(Input)
-                if Dragging and Input.UserInputType == Enum.UserInputType.MouseMovement then
-                    local Delta = Input.Position - DragStart
+            local conn1, conn2
+            conn1 = UserInputService.InputChanged:Connect(function(input)
+                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    local delta = input.Position - dragStart
                     MainFrame.Position = UDim2.new(
-                        StartPos.X.Scale,
-                        StartPos.X.Offset + Delta.X,
-                        StartPos.Y.Scale,
-                        StartPos.Y.Offset + Delta.Y
+                        startPos.X.Scale,
+                        startPos.X.Offset + delta.X,
+                        startPos.Y.Scale,
+                        startPos.Y.Offset + delta.Y
                     )
                 end
             end)
             
-            local EndConnection
-            EndConnection = UserInputService.InputEnded:Connect(function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    Dragging = false
-                    Connection:Disconnect()
-                    EndConnection:Disconnect()
+            conn2 = UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = false
+                    conn1:Disconnect()
+                    conn2:Disconnect()
                 end
             end)
         end
     end)
     
-    -- Create minimize button with custom image
-    function Window:AddMinimizeButton(Configs)
-        local ButtonConfig = Configs.Button or {}
-        local CornerConfig = Configs.Corner or {}
-        local StrokeConfig = Configs.Stroke or {}
-        
-        local MinBtn = Create("ImageButton", {
-            Name = "CustomMinimizeButton",
+    -- Tab storage
+    local tabs = {}
+    local tabPanels = {}
+    
+    local Window = {}
+    
+    -- Add Minimize Button (custom)
+    function Window:AddMinimizeButton(config)
+        local btn = Create("ImageButton", {
+            Name = "CustomMinimize",
             Parent = TitleBar,
-            Size = ButtonConfig.Size or UDim2.new(0, 30, 0, 30),
-            Position = ButtonConfig.Position or UDim2.new(1, -70, 0.5, -15),
-            BackgroundColor3 = ButtonConfig.BackgroundColor3 or self.Themes[self._theme]["Color Hub 2"],
-            BackgroundTransparency = ButtonConfig.BackgroundTransparency or 0,
-            Image = ButtonConfig.Image or "rbxassetid://125965818173870",
-            AutoButtonColor = false,
+            Size = config.Button.Size or UDim2.new(0, 30, 0, 30),
+            Position = config.Button.Position or UDim2.new(1, -78, 0.5, -15),
+            BackgroundColor3 = config.Button.BackgroundColor3 or DClib.Themes[DClib.Theme].Background,
+            Image = config.Button.Image or "rbxassetid://125965818173870",
+            AutoButtonColor = false
         })
         
-        MakeCorner(MinBtn, CornerConfig.CornerRadius or UDim.new(0, 6))
-        MakeStroke(MinBtn, StrokeConfig.Color or self.Themes[self._theme]["Color Theme"], StrokeConfig.Thickness or 1)
+        MakeCorner(btn, config.Corner.CornerRadius or 6)
+        MakeStroke(btn, config.Stroke.Color or DClib.Themes[DClib.Theme].Accent, config.Stroke.Thickness or 1)
         
-        MinBtn.MouseEnter:Connect(function()
-            CreateTween(MinBtn, "BackgroundTransparency", 0.2, 0.15)
+        btn.MouseButton1Click:Connect(function()
+            if minimized then
+                Tween(MainFrame, {Size = UDim2.new(0, 550, 0, 380)}, 0.25)
+                minimized = false
+            else
+                Tween(MainFrame, {Size = UDim2.new(0, 550, 0, 35)}, 0.25)
+                minimized = true
+            end
         end)
         
-        MinBtn.MouseLeave:Connect(function()
-            CreateTween(MinBtn, "BackgroundTransparency", ButtonConfig.BackgroundTransparency or 0, 0.15)
-        end)
-        
-        MinBtn.MouseButton1Click:Connect(function()
-            -- Toggle minimize behavior
-            CreateTween(MainFrame, "Size", UDim2.new(0, MainFrame.Size.X.Offset, 0, 30), 0.25, Enum.EasingStyle.Quad)
-        end)
-        
-        return MinBtn
+        return btn
     end
     
-    -- Create tab button
-    function Window:AddTabButton(Configs)
-        local TabName = Configs.Name or Configs.Title or "Tab"
-        local TabIcon = self:GetIcon(Configs.Icon)
+    -- Add Tab
+    function Window:AddTab(config)
+        local tabName = config.Name or "Tab"
+        local tabIcon = config.Icon or ""
         
-        local TabButton = Create("TextButton", {
-            Name = "TabButton_" .. TabName,
+        -- Tab Button (tròn)
+        local TabBtn = Create("TextButton", {
+            Name = "TabBtn_" .. tabName,
             Parent = TabScroll,
-            Size = UDim2.new(0, 70, 0, 32),
-            BackgroundColor3 = self.Themes[self._theme]["Color Hub 2"],
+            Size = UDim2.new(0, 75, 0, 32),
+            BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
             Text = "",
             AutoButtonColor = true,
-            BorderSizePixel = 0,
+            BorderSizePixel = 0
         })
         
-        MakeCorner(TabButton, self._settings.CornerRadius)
-        MakeStroke(TabButton, self.Themes[self._theme]["Color Stroke"], 1)
+        MakeCorner(TabBtn, 8)
+        MakeStroke(TabBtn, DClib.Themes[DClib.Theme].Stroke, 1)
         
-        local IconImage = Create("ImageLabel", {
-            Name = "TabIcon",
-            Parent = TabButton,
-            Size = UDim2.new(0, 18, 0, 18),
-            Position = UDim2.new(0.5, -9, 0.5, -12),
-            BackgroundTransparency = 1,
-            Image = TabIcon or "",
-            ImageColor3 = self.Themes[self._theme]["Color Text"],
-        })
-        self:_registerInstance(IconImage, "Theme")
+        -- Icon
+        if tabIcon ~= "" then
+            local Icon = Create("ImageLabel", {
+                Name = "Icon",
+                Parent = TabBtn,
+                Size = UDim2.new(0, 18, 0, 18),
+                Position = UDim2.new(0.5, -9, 0.5, -10),
+                BackgroundTransparency = 1,
+                Image = tabIcon,
+                ImageColor3 = DClib.Themes[DClib.Theme].Text
+            })
+        end
         
-        local ButtonLabel = Create("TextLabel", {
-            Name = "TabLabel",
-            Parent = TabButton,
+        -- Label
+        local Label = Create("TextLabel", {
+            Name = "Label",
+            Parent = TabBtn,
             Size = UDim2.new(1, 0, 0, 12),
             Position = UDim2.new(0, 0, 1, -12),
             BackgroundTransparency = 1,
-            Text = TabName,
-            TextColor3 = self.Themes[self._theme]["Color Text"],
+            Text = tabName,
+            TextColor3 = DClib.Themes[DClib.Theme].Text,
             TextSize = 10,
             Font = Enum.Font.GothamMedium,
-            TextXAlignment = "Center",
-            TextYAlignment = "Top",
+            TextXAlignment = "Center"
         })
-        self:_registerInstance(ButtonLabel, "Text")
         
-        -- Create content panel (initially hidden)
-        local ContentPanel = Create("Frame", {
-            Name = "TabPanel_" .. TabName,
+        -- Content Panel (tròn)
+        local Panel = Create("Frame", {
+            Name = "Panel_" .. tabName,
             Parent = ContentScroll,
-            Size = UDim2.new(1, 0, 0, 100),
+            Size = UDim2.new(1, 0, 0, 50),
             Visible = false,
-            BackgroundColor3 = self.Themes[self._theme]["Color Hub 2"],
-            ClipsDescendants = true,
+            BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
+            ClipsDescendants = true
         })
         
-        MakeCorner(ContentPanel, self._settings.CornerRadius)
-        MakeStroke(ContentPanel, self.Themes[self._theme]["Color Stroke"], 1)
-        self:_registerInstance(ContentPanel, "Frame")
+        MakeCorner(Panel, 8)
+        MakeStroke(Panel, DClib.Themes[DClib.Theme].Stroke, 1)
         
-        -- Panel header with close button
-        local PanelHeader = Create("Frame", {
-            Name = "PanelHeader",
-            Parent = ContentPanel,
-            Size = UDim2.new(1, 0, 0, 25),
-            BackgroundTransparency = 1,
-        })
-        
-        local PanelTitle = Create("TextLabel", {
-            Name = "PanelTitle",
-            Parent = PanelHeader,
-            Size = UDim2.new(1, -30, 1, 0),
-            Position = UDim2.new(0, 10, 0, 0),
-            BackgroundTransparency = 1,
-            Text = TabName,
-            TextColor3 = self.Themes[self._theme]["Color Text"],
-            TextSize = 12,
-            Font = Enum.Font.GothamBold,
-            TextXAlignment = "Left",
-        })
-        self:_registerInstance(PanelTitle, "Text")
-        
-        local ClosePanelBtn = Create("ImageButton", {
-            Name = "ClosePanelButton",
-            Parent = PanelHeader,
-            Size = UDim2.new(0, 16, 0, 16),
-            Position = UDim2.new(1, -20, 0.5, -8),
-            BackgroundTransparency = 1,
-            Image = self.Icons.close,
-            ImageColor3 = self.Themes[self._theme]["Color Dark Text"],
-        })
-        
-        ClosePanelBtn.MouseButton1Click:Connect(function()
-            CreateTween(ContentPanel, "Transparency", 1, 0.15)
-            task.wait(0.15)
-            ContentPanel.Visible = false
-            ContentPanel.Transparency = 0
-        end)
-        
-        -- Scroll frame for tab content
         local PanelScroll = Create("ScrollingFrame", {
             Name = "PanelScroll",
-            Parent = ContentPanel,
-            Size = UDim2.new(1, -4, 1, -29),
-            Position = UDim2.new(0, 2, 0, 27),
+            Parent = Panel,
+            Size = UDim2.new(1, -4, 1, -4),
+            Position = UDim2.new(0, 2, 0, 2),
             BackgroundTransparency = 1,
             ScrollBarThickness = 4,
-            ScrollBarImageColor3 = self.Themes[self._theme]["Color Theme"],
-            ScrollBarImageTransparency = 0.2,
-            CanvasSize = UDim2.new(0, 0, 0, 0),
-            AutomaticCanvasSize = "Y",
-            ScrollingDirection = "Y",
+            ScrollBarImageColor3 = DClib.Themes[DClib.Theme].Accent,
+            AutomaticCanvasSize = "Y"
         })
-        self:_registerInstance(PanelScroll, "ScrollBar")
         
-        MakePadding(PanelScroll)
-        MakeListLayout(PanelScroll)
+        local PanelLayout = Create("UIListLayout", {
+            Parent = PanelScroll,
+            Padding = UDim.new(0, 8),
+            SortOrder = "LayoutOrder"
+        })
         
-        -- Tab selection
-        TabButton.MouseButton1Click:Connect(function()
-            -- Hide all other panels
-            for _, panel in ipairs(TabPanels) do
-                if panel ~= ContentPanel then
-                    panel.Visible = false
-                end
+        local PanelPadding = Create("UIPadding", {
+            Parent = PanelScroll,
+            PaddingLeft = UDim.new(0, 8),
+            PaddingRight = UDim.new(0, 8),
+            PaddingTop = UDim.new(0, 8),
+            PaddingBottom = UDim.new(0, 8)
+        })
+        
+        table.insert(tabs, TabBtn)
+        table.insert(tabPanels, Panel)
+        
+        -- Click handler
+        TabBtn.MouseButton1Click:Connect(function()
+            -- Hide all panels
+            for _, p in ipairs(tabPanels) do
+                p.Visible = false
             end
             
-            -- Show/hide current panel
-            if ContentPanel.Visible then
-                CreateTween(ContentPanel, "Transparency", 1, 0.15)
-                task.wait(0.15)
-                ContentPanel.Visible = false
-                ContentPanel.Transparency = 0
-            else
-                ContentPanel.Visible = true
-                ContentPanel.Size = UDim2.new(1, 0, 0, 100)
-                CreateTween(ContentPanel, "Size", UDim2.new(1, 0, 1, -4), 0.25, Enum.EasingStyle.Quad)
-                CreateTween(ContentPanel, "Transparency", 0, 0.2)
-            end
-            
-            self:_fireCallbacks("TabSelected", TabName)
+            -- Show this panel
+            Panel.Visible = true
+            Panel.Size = UDim2.new(1, 0, 0, 100)
+            Tween(Panel, {Size = UDim2.new(1, 0, 1, -4)}, 0.2)
         end)
         
-        table.insert(TabButtons, TabButton)
-        table.insert(TabPanels, ContentPanel)
+        local TabObj = {}
         
-        -- Return tab object for adding components
-        local Tab = {}
-        
-        function Tab:AddSection(SectionName)
+        function TabObj:AddSection(text)
             local Section = Create("Frame", {
                 Name = "Section",
                 Parent = PanelScroll,
-                Size = UDim2.new(1, 0, 0, 25),
-                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, 20),
+                BackgroundTransparency = 1
             })
             
-            local SectionLabel = Create("TextLabel", {
-                Name = "SectionLabel",
+            local Label = Create("TextLabel", {
+                Name = "Label",
                 Parent = Section,
                 Size = UDim2.new(1, 0, 1, 0),
                 BackgroundTransparency = 1,
-                Text = SectionName,
-                TextColor3 = DClib.Themes[DClib._theme]["Color Text"],
+                Text = text,
+                TextColor3 = DClib.Themes[DClib.Theme].Text,
                 TextSize = 12,
                 Font = Enum.Font.GothamBold,
-                TextXAlignment = "Left",
+                TextXAlignment = "Left"
             })
-            DClib:_registerInstance(SectionLabel, "Text")
             
             return Section
         end
         
-        function Tab:AddParagraph(Configs)
-            local ParagraphTitle = Configs.Title or Configs.Name or "Title"
-            local ParagraphText = Configs.Text or ""
+        function TabObj:AddButton(config)
+            local btnName = config.Name or "Button"
+            local callback = config.Callback or function() end
             
-            local Paragraph = Create("Frame", {
-                Name = "Paragraph",
-                Parent = PanelScroll,
-                Size = UDim2.new(1, 0, 0, 50),
-                BackgroundTransparency = 1,
-            })
-            
-            local TitleLabel = Create("TextLabel", {
-                Name = "ParagraphTitle",
-                Parent = Paragraph,
-                Size = UDim2.new(1, 0, 0, 18),
-                BackgroundTransparency = 1,
-                Text = ParagraphTitle,
-                TextColor3 = DClib.Themes[DClib._theme]["Color Text"],
-                TextSize = 12,
-                Font = Enum.Font.GothamBold,
-                TextXAlignment = "Left",
-            })
-            DClib:_registerInstance(TitleLabel, "Text")
-            
-            local TextLabel = Create("TextLabel", {
-                Name = "ParagraphText",
-                Parent = Paragraph,
-                Size = UDim2.new(1, 0, 1, -18),
-                Position = UDim2.new(0, 0, 0, 18),
-                BackgroundTransparency = 1,
-                Text = ParagraphText,
-                TextColor3 = DClib.Themes[DClib._theme]["Color Dark Text"],
-                TextSize = 11,
-                Font = Enum.Font.Gotham,
-                TextWrapped = true,
-                TextXAlignment = "Left",
-                TextYAlignment = "Top",
-            })
-            DClib:_registerInstance(TextLabel, "DarkText")
-            
-            return Paragraph
-        end
-        
-        function Tab:AddButton(Configs)
-            local ButtonName = Configs.Name or Configs.Title or "Button"
-            local Callback = Configs.Callback or function() end
-            
-            local Button = Create("TextButton", {
+            local Btn = Create("TextButton", {
                 Name = "Button",
                 Parent = PanelScroll,
-                Size = UDim2.new(1, 0, 0, DClib._settings.ButtonHeight),
-                BackgroundColor3 = DClib.Themes[DClib._theme]["Color Hub 2"],
-                AutoButtonColor = true,
+                Size = UDim2.new(1, 0, 0, 35),
+                BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
                 Text = "",
-                BorderSizePixel = 0,
+                AutoButtonColor = true,
+                BorderSizePixel = 0
             })
             
-            MakeCorner(Button, DClib._settings.CornerRadius)
-            MakeStroke(Button, DClib.Themes[DClib._theme]["Color Stroke"], 1)
-            DClib:_registerInstance(Button, "Button")
+            MakeCorner(Btn, 6)
+            MakeStroke(Btn, DClib.Themes[DClib.Theme].Stroke, 1)
             
-            local ButtonLabel = Create("TextLabel", {
-                Name = "ButtonLabel",
-                Parent = Button,
+            local BtnLabel = Create("TextLabel", {
+                Name = "Label",
+                Parent = Btn,
                 Size = UDim2.new(1, -20, 1, 0),
                 Position = UDim2.new(0, 10, 0, 0),
                 BackgroundTransparency = 1,
-                Text = ButtonName,
-                TextColor3 = DClib.Themes[DClib._theme]["Color Text"],
-                TextSize = DClib._settings.IconSize - 2,
+                Text = btnName,
+                TextColor3 = DClib.Themes[DClib.Theme].Text,
+                TextSize = 13,
                 Font = Enum.Font.GothamMedium,
-                TextXAlignment = "Left",
+                TextXAlignment = "Left"
             })
-            DClib:_registerInstance(ButtonLabel, "Text")
             
-            Button.MouseEnter:Connect(function()
-                CreateTween(Button, "BackgroundTransparency", 0.2, 0.15)
+            Btn.MouseEnter:Connect(function()
+                Tween(Btn, {BackgroundTransparency = 0.2}, 0.1)
             end)
             
-            Button.MouseLeave:Connect(function()
-                CreateTween(Button, "BackgroundTransparency", 0, 0.15)
+            Btn.MouseLeave:Connect(function()
+                Tween(Btn, {BackgroundTransparency = 0}, 0.1)
             end)
             
-            Button.MouseButton1Click:Connect(function()
-                Callback()
-            end)
+            Btn.MouseButton1Click:Connect(callback)
             
-            return Button
+            return Btn
         end
         
-        function Tab:AddToggle(Configs)
-            local ToggleName = Configs.Name or Configs.Title or "Toggle"
-            local Default = Configs.Default or false
-            local Callback = Configs.Callback or function() end
+        function TabObj:AddToggle(config)
+            local toggleName = config.Name or "Toggle"
+            local default = config.Default or false
+            local callback = config.Callback or function() end
             
             local Toggle = Create("Frame", {
                 Name = "Toggle",
                 Parent = PanelScroll,
-                Size = UDim2.new(1, 0, 0, DClib._settings.ButtonHeight),
-                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, 35),
+                BackgroundTransparency = 1
             })
             
-            local ToggleLabel = Create("TextLabel", {
-                Name = "ToggleLabel",
+            local Label = Create("TextLabel", {
+                Name = "Label",
                 Parent = Toggle,
                 Size = UDim2.new(1, -50, 1, 0),
                 BackgroundTransparency = 1,
-                Text = ToggleName,
-                TextColor3 = DClib.Themes[DClib._theme]["Color Text"],
-                TextSize = DClib._settings.IconSize - 2,
+                Text = toggleName,
+                TextColor3 = DClib.Themes[DClib.Theme].Text,
+                TextSize = 13,
                 Font = Enum.Font.GothamMedium,
-                TextXAlignment = "Left",
+                TextXAlignment = "Left"
             })
-            DClib:_registerInstance(ToggleLabel, "Text")
             
-            local ToggleButton = Create("TextButton", {
-                Name = "ToggleButton",
+            local ToggleBtn = Create("TextButton", {
+                Name = "ToggleBtn",
                 Parent = Toggle,
-                Size = DClib._settings.ToggleSize,
-                Position = UDim2.new(1, -40, 0.5, -DClib._settings.ToggleSize.Y.Offset / 2),
-                BackgroundColor3 = DClib.Themes[DClib._theme]["Color Stroke"],
-                AutoButtonColor = true,
+                Size = UDim2.new(0, 40, 0, 20),
+                Position = UDim2.new(1, -45, 0.5, -10),
+                BackgroundColor3 = DClib.Themes[DClib.Theme].Stroke,
                 Text = "",
-                BorderSizePixel = 0,
+                AutoButtonColor = true,
+                BorderSizePixel = 0
             })
             
-            MakeCorner(ToggleButton, UDim.new(0.5, 0))
+            MakeCorner(ToggleBtn, 10)
             
-            local ToggleKnob = Create("Frame", {
-                Name = "ToggleKnob",
-                Parent = ToggleButton,
-                Size = UDim2.new(0, DClib._settings.ToggleSize.Y.Offset - 4, 0, DClib._settings.ToggleSize.Y.Offset - 4),
-                Position = UDim2.new(0, 2, 0.5, -(DClib._settings.ToggleSize.Y.Offset - 4) / 2),
-                BackgroundColor3 = DClib.Themes[DClib._theme]["Color Theme"],
+            local Knob = Create("Frame", {
+                Name = "Knob",
+                Parent = ToggleBtn,
+                Size = UDim2.new(0, 16, 0, 16),
+                Position = UDim2.new(0, 2, 0.5, -8),
+                BackgroundColor3 = DClib.Themes[DClib.Theme].Accent
             })
             
-            MakeCorner(ToggleKnob, UDim.new(0.5, 0))
-            DClib:_registerInstance(ToggleKnob, "Theme")
+            MakeCorner(Knob, 8)
             
-            local function SetToggle(Value)
-                if Value then
-                    CreateTween(ToggleKnob, "Position", UDim2.new(1, -DClib._settings.ToggleSize.Y.Offset + 2, 0.5, -(DClib._settings.ToggleSize.Y.Offset - 4) / 2), 0.2)
-                    CreateTween(ToggleKnob, "BackgroundTransparency", 0, 0.2)
+            local function SetValue(val)
+                if val then
+                    Tween(Knob, {Position = UDim2.new(1, -18, 0.5, -8)}, 0.15)
                 else
-                    CreateTween(ToggleKnob, "Position", UDim2.new(0, 2, 0.5, -(DClib._settings.ToggleSize.Y.Offset - 4) / 2), 0.2)
-                    CreateTween(ToggleKnob, "BackgroundTransparency", 0.5, 0.2)
+                    Tween(Knob, {Position = UDim2.new(0, 2, 0.5, -8)}, 0.15)
                 end
             end
             
-            SetToggle(Default)
+            SetValue(default)
             
-            ToggleButton.MouseButton1Click:Connect(function()
-                Default = not Default
-                SetToggle(Default)
-                Callback(Default)
-                self:_fireCallbacks("ToggleChanged", ToggleName, Default)
+            ToggleBtn.MouseButton1Click:Connect(function()
+                default = not default
+                SetValue(default)
+                callback(default)
             end)
             
-            return {
-                Set = SetToggle,
-                Get = function() return Default end,
-            }
+            return {Set = SetValue, Get = function() return default end}
         end
         
-        function Tab:AddSlider(Configs)
-            local SliderName = Configs.Name or Configs.Title or "Slider"
-            local Min = Configs.Min or 0
-            local Max = Configs.Max or 100
-            local Default = Configs.Default or 50
-            local Callback = Configs.Callback or function() end
+        function TabObj:AddSlider(config)
+            local sliderName = config.Name or "Slider"
+            local min = config.Min or 0
+            local max = config.Max or 100
+            local default = config.Default or 50
+            local callback = config.Callback or function() end
             
             local Slider = Create("Frame", {
                 Name = "Slider",
                 Parent = PanelScroll,
-                Size = UDim2.new(1, 0, 0, 40),
-                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, 45),
+                BackgroundTransparency = 1
             })
             
-            local SliderLabel = Create("TextLabel", {
-                Name = "SliderLabel",
+            local Label = Create("TextLabel", {
+                Name = "Label",
                 Parent = Slider,
                 Size = UDim2.new(1, -60, 0, 16),
-                Position = UDim2.new(0, 0, 0, 0),
                 BackgroundTransparency = 1,
-                Text = SliderName .. ": " .. tostring(Default),
-                TextColor3 = DClib.Themes[DClib._theme]["Color Text"],
-                TextSize = 11,
+                Text = sliderName .. ": " .. tostring(default),
+                TextColor3 = DClib.Themes[DClib.Theme].Text,
+                TextSize = 12,
                 Font = Enum.Font.GothamMedium,
-                TextXAlignment = "Left",
+                TextXAlignment = "Left"
             })
-            DClib:_registerInstance(SliderLabel, "Text")
             
-            local SliderBar = Create("Frame", {
-                Name = "SliderBar",
+            local Bar = Create("Frame", {
+                Name = "Bar",
                 Parent = Slider,
                 Size = UDim2.new(1, 0, 0, 6),
                 Position = UDim2.new(0, 0, 1, -10),
-                BackgroundColor3 = DClib.Themes[DClib._theme]["Color Stroke"],
+                BackgroundColor3 = DClib.Themes[DClib.Theme].Stroke
             })
             
-            MakeCorner(SliderBar)
+            MakeCorner(Bar, 3)
             
-            local SliderFill = Create("Frame", {
-                Name = "SliderFill",
-                Parent = SliderBar,
-                Size = UDim2.new((Default - Min) / (Max - Min), 0, 1, 0),
-                BackgroundColor3 = DClib.Themes[DClib._theme]["Color Theme"],
+            local Fill = Create("Frame", {
+                Name = "Fill",
+                Parent = Bar,
+                Size = UDim2.new(0.5, 0, 1, 0),
+                BackgroundColor3 = DClib.Themes[DClib.Theme].Accent
             })
             
-            MakeCorner(SliderFill)
-            DClib:_registerInstance(SliderFill, "Theme")
+            MakeCorner(Fill, 3)
             
-            local SliderKnob = Create("Frame", {
-                Name = "SliderKnob",
-                Parent = SliderBar,
+            local Knob = Create("Frame", {
+                Name = "Knob",
+                Parent = Bar,
                 Size = UDim2.new(0, 14, 0, 14),
-                Position = UDim2.new((Default - Min) / (Max - Min), -7, 0.5, -7),
-                BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+                Position = UDim2.new(0.5, -7, 0.5, -7),
+                BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             })
             
-            MakeCorner(SliderKnob)
+            MakeCorner(Knob, 7)
             
-            local function UpdateSlider(Value)
-                local Percentage = (Value - Min) / (Max - Min)
-                SliderFill.Size = UDim2.new(Percentage, 0, 1, 0)
-                SliderKnob.Position = UDim2.new(Percentage, -7, 0.5, -7)
-                SliderLabel.Text = SliderName .. ": " .. tostring(math.floor(Value))
-                Callback(Value)
-                self:_fireCallbacks("SliderChanged", SliderName, Value)
+            local function UpdateValue(val)
+                local pct = (val - min) / (max - min)
+                Fill.Size = UDim2.new(pct, 0, 1, 0)
+                Knob.Position = UDim2.new(pct, -7, 0.5, -7)
+                Label.Text = sliderName .. ": " .. tostring(math.floor(val))
+                callback(val)
             end
             
-            local Dragging = false
-            SliderKnob.InputBegan:Connect(function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    Dragging = true
-                    local Connection
-                    Connection = UserInputService.InputChanged:Connect(function(Input)
-                        if Dragging and Input.UserInputType == Enum.UserInputType.MouseMovement then
-                            local SliderPos = SliderBar.AbsolutePosition.X
-                            local SliderWidth = SliderBar.AbsoluteSize.X
-                            local MouseX = math.clamp(Input.Position.X - SliderPos, 0, SliderWidth)
-                            local Percentage = MouseX / SliderWidth
-                            local Value = Min + Percentage * (Max - Min)
-                            UpdateSlider(Value)
+            local dragging = false
+            Knob.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    dragging = true
+                    local conn
+                    conn = UserInputService.InputChanged:Connect(function(input)
+                        if dragging then
+                            local pos = Bar.AbsolutePosition.X
+                            local width = Bar.AbsoluteSize.X
+                            local x = math.clamp(input.Position.X - pos, 0, width)
+                            local pct = x / width
+                            local val = min + pct * (max - min)
+                            UpdateValue(val)
                         end
                     end)
                     
-                    local EndConnection
-                    EndConnection = UserInputService.InputEnded:Connect(function()
-                        Dragging = false
-                        Connection:Disconnect()
-                        EndConnection:Disconnect()
+                    UserInputService.InputEnded:Connect(function()
+                        dragging = false
+                        conn:Disconnect()
                     end)
                 end
             end)
             
-            UpdateSlider(Default)
+            UpdateValue(default)
             
-            return {
-                Set = UpdateSlider,
-                Get = function() return Default end,
-            }
+            return {Set = UpdateValue, Get = function() return default end}
         end
         
-        return Tab
+        function TabObj:AddParagraph(config)
+            local title = config.Title or "Title"
+            local text = config.Text or ""
+            
+            local Paragraph = Create("Frame", {
+                Name = "Paragraph",
+                Parent = PanelScroll,
+                Size = UDim2.new(1, 0, 0, 55),
+                BackgroundTransparency = 1
+            })
+            
+            local Title = Create("TextLabel", {
+                Name = "Title",
+                Parent = Paragraph,
+                Size = UDim2.new(1, 0, 0, 18),
+                BackgroundTransparency = 1,
+                Text = title,
+                TextColor3 = DClib.Themes[DClib.Theme].Text,
+                TextSize = 12,
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = "Left"
+            })
+            
+            local Text = Create("TextLabel", {
+                Name = "Text",
+                Parent = Paragraph,
+                Size = UDim2.new(1, 0, 1, -18),
+                Position = UDim2.new(0, 0, 0, 18),
+                BackgroundTransparency = 1,
+                Text = text,
+                TextColor3 = DClib.Themes[DClib.Theme].Text2,
+                TextSize = 11,
+                Font = Enum.Font.Gotham,
+                TextWrapped = true,
+                TextXAlignment = "Left",
+                TextYAlignment = "Top"
+            })
+            
+            return Paragraph
+        end
+        
+        return TabObj
     end
     
     -- Notify function
-    function Window:Notify(Configs)
-        local NotifyTitle = Configs.Title or "Notification"
-        local NotifyText = Configs.Text or ""
-        local Duration = Configs.Duration or 5
-        local NotifyType = Configs.Type or "Info"
+    function Window:Notify(config)
+        local title = config.Title or "Notify"
+        local text = config.Text or ""
+        local duration = config.Duration or 5
         
         local colors = {
-            Info = self.Themes[self._theme]["Color Theme"],
-            Success = Color3.fromRGB(0, 255, 0),
-            Warning = Color3.fromRGB(255, 255, 0),
+            Info = DClib.Themes[DClib.Theme].Accent,
+            Success = Color3.fromRGB(0, 200, 0),
+            Warning = Color3.fromRGB(255, 200, 0),
             Error = Color3.fromRGB(255, 0, 0)
         }
         
@@ -1463,12 +686,12 @@ function DClib:MakeWindow(Configs)
             Parent = ScreenGui,
             Size = UDim2.new(0, 300, 0, 80),
             Position = UDim2.new(1, -320, 0, 10),
-            BackgroundColor3 = self.Themes[self._theme]["Color Hub 2"],
-            ZIndex = 10000,
+            BackgroundColor3 = DClib.Themes[DClib.Theme].Background,
+            ZIndex = 10000
         })
         
-        MakeCorner(NotifyFrame, self._settings.CornerRadius)
-        MakeStroke(NotifyFrame, self.Themes[self._theme]["Color Stroke"], 1)
+        MakeCorner(NotifyFrame, 8)
+        MakeStroke(NotifyFrame, DClib.Themes[DClib.Theme].Stroke, 1)
         
         local Title = Create("TextLabel", {
             Name = "Title",
@@ -1476,13 +699,12 @@ function DClib:MakeWindow(Configs)
             Size = UDim2.new(1, -10, 0, 20),
             Position = UDim2.new(0, 5, 0, 5),
             BackgroundTransparency = 1,
-            Text = NotifyTitle,
-            TextColor3 = colors[NotifyType] or self.Themes[self._theme]["Color Text"],
+            Text = title,
+            TextColor3 = colors[config.Type] or colors.Info,
             TextSize = 14,
             Font = Enum.Font.GothamBold,
-            TextXAlignment = "Left",
+            TextXAlignment = "Left"
         })
-        self:_registerInstance(Title, "Theme")
         
         local Text = Create("TextLabel", {
             Name = "Text",
@@ -1490,131 +712,123 @@ function DClib:MakeWindow(Configs)
             Size = UDim2.new(1, -10, 0, 40),
             Position = UDim2.new(0, 5, 0, 25),
             BackgroundTransparency = 1,
-            Text = NotifyText,
-            TextColor3 = self.Themes[self._theme]["Color Dark Text"],
+            Text = text,
+            TextColor3 = DClib.Themes[DClib.Theme].Text2,
             TextSize = 12,
             Font = Enum.Font.Gotham,
             TextWrapped = true,
-            TextXAlignment = "Left",
+            TextXAlignment = "Left"
         })
-        self:_registerInstance(Text, "DarkText")
         
-        CreateTween(NotifyFrame, "Position", UDim2.new(1, -10, 0, 10), 0.5, Enum.EasingStyle.Quad)
+        Tween(NotifyFrame, {Position = UDim2.new(1, -10, 0, 10)}, 0.3)
         
-        task.delay(Duration, function()
-            CreateTween(NotifyFrame, "Position", UDim2.new(1, -320, 0, 10), 0.5, Enum.EasingStyle.Quad, function()
-                NotifyFrame:Destroy()
-            end)
+        task.delay(duration, function()
+            Tween(NotifyFrame, {Position = UDim2.new(1, -320, 0, 10)}, 0.3)
+            task.wait(0.3)
+            NotifyFrame:Destroy()
         end)
     end
     
     -- Dialog function
-    function Window:Dialog(Configs)
-        local DialogTitle = Configs.Title or "Dialog"
-        local DialogText = Configs.Text or ""
-        local Options = Configs.Options or {}
+    function Window:Dialog(config)
+        local title = config.Title or "Dialog"
+        local text = config.Text or ""
+        local options = config.Options or {}
         
-        local DialogOverlay = Create("Frame", {
-            Name = "DialogOverlay",
+        local Overlay = Create("Frame", {
+            Name = "Overlay",
             Parent = ScreenGui,
             Size = UDim2.new(1, 0, 1, 0),
             BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-            BackgroundTransparency = 0.6,
-            ZIndex = 9999,
+            BackgroundTransparency = 0.5,
+            ZIndex = 9999
         })
         
-        local DialogFrame = Create("Frame", {
-            Name = "DialogFrame",
-            Parent = DialogOverlay,
-            Size = UDim2.new(0, 300, 0, 150),
-            Position = UDim2.new(0.5, -150, 0.5, -75),
-            BackgroundColor3 = self.Themes[self._theme]["Color Hub 2"],
+        local Dialog = Create("Frame", {
+            Name = "Dialog",
+            Parent = Overlay,
+            Size = UDim2.new(0, 320, 0, 160),
+            Position = UDim2.new(0.5, -160, 0.5, -80),
+            BackgroundColor3 = DClib.Themes[DClib.Theme].Background
         })
         
-        MakeCorner(DialogFrame, self._settings.CornerRadius)
+        MakeCorner(Dialog, 12)
         
         local Title = Create("TextLabel", {
             Name = "Title",
-            Parent = DialogFrame,
+            Parent = Dialog,
             Size = UDim2.new(1, -20, 0, 25),
             Position = UDim2.new(0, 10, 0, 5),
             BackgroundTransparency = 1,
-            Text = DialogTitle,
-            TextColor3 = self.Themes[self._theme]["Color Text"],
+            Text = title,
+            TextColor3 = DClib.Themes[DClib.Theme].Text,
             TextSize = 14,
             Font = Enum.Font.GothamBold,
-            TextXAlignment = "Left",
+            TextXAlignment = "Left"
         })
         
         local Text = Create("TextLabel", {
             Name = "Text",
-            Parent = DialogFrame,
+            Parent = Dialog,
             Size = UDim2.new(1, -20, 0, 50),
             Position = UDim2.new(0, 10, 0, 30),
             BackgroundTransparency = 1,
-            Text = DialogText,
-            TextColor3 = self.Themes[self._theme]["Color Dark Text"],
+            Text = text,
+            TextColor3 = DClib.Themes[DClib.Theme].Text2,
             TextSize = 12,
             Font = Enum.Font.Gotham,
             TextWrapped = true,
-            TextXAlignment = "Left",
+            TextXAlignment = "Left"
         })
         
-        local ButtonContainer = Create("Frame", {
-            Name = "ButtonContainer",
-            Parent = DialogFrame,
+        local BtnContainer = Create("Frame", {
+            Name = "BtnContainer",
+            Parent = Dialog,
             Size = UDim2.new(1, -20, 0, 40),
             Position = UDim2.new(0, 10, 1, -45),
-            BackgroundTransparency = 1,
+            BackgroundTransparency = 1
         })
         
-        local ButtonLayout = Create("UIListLayout", {
-            Parent = ButtonContainer,
+        local BtnLayout = Create("UIListLayout", {
+            Parent = BtnContainer,
             Padding = UDim.new(0, 10),
             FillDirection = "Horizontal",
-            HorizontalAlignment = "Center",
-            VerticalAlignment = "Center",
+            HorizontalAlignment = "Center"
         })
         
-        local function CloseDialog()
-            CreateTween(DialogFrame, "Size", UDim2.new(0, 0, 0, 0), 0.2)
-            CreateTween(DialogOverlay, "Transparency", 1, 0.2, nil, function()
-                DialogOverlay:Destroy()
-            end)
+        local function Close()
+            Tween(Dialog, {Size = UDim2.new(0, 0, 0, 0)}, 0.2)
+            Tween(Overlay, {Transparency = 1}, 0.2)
+            task.wait(0.2)
+            Overlay:Destroy()
         end
         
-        for _, Option in ipairs(Options) do
-            local OptionName = Option[1]
-            local OptionCallback = Option[2]
+        for _, opt in ipairs(options) do
+            local optName = opt[1]
+            local optCallback = opt[2]
             
-            local Button = Create("TextButton", {
-                Name = "DialogButton_" .. OptionName,
-                Parent = ButtonContainer,
-                Size = UDim2.new(0, 100, 0, 30),
-                BackgroundColor3 = self.Themes[self._theme]["Color Theme"],
-                AutoButtonColor = false,
-                Text = OptionName,
-                TextColor3 = self.Themes[self._theme]["Color Text"],
-                TextSize = 12,
+            local Btn = Create("TextButton", {
+                Name = "Btn_" .. optName,
+                Parent = BtnContainer,
+                Size = UDim2.new(0, 100, 0, 32),
+                BackgroundColor3 = DClib.Themes[DClib.Theme].Accent,
+                Text = optName,
+                TextColor3 = DClib.Themes[DClib.Theme].Text,
+                AutoButtonColor = true,
                 Font = Enum.Font.GothamBold,
+                TextSize = 12
             })
             
-            MakeCorner(Button, UDim.new(0, 4))
+            MakeCorner(Btn, 6)
             
-            Button.MouseButton1Click:Connect(function()
-                if OptionCallback then
-                    OptionCallback()
-                end
-                CloseDialog()
+            Btn.MouseButton1Click:Connect(function()
+                if optCallback then optCallback() end
+                Close()
             end)
         end
     end
     
-    -- Return window object
     return Window
 end
 
--- ============================================
--- RETURN DCLIB
--- ============================================
 return DClib
