@@ -182,40 +182,20 @@ function DClib:MakeWindow(config)
         end
     end)
     
-    -- Tab Area (phía trên content)
-    local TabArea = Create("Frame", {
-        Name = "TabArea",
+    -- Tab Container (circular layout)
+    local TabContainer = Create("Frame", {
+        Name = "TabContainer",
         Parent = MainFrame,
-        Size = UDim2.new(1, -40, 0, 45),
-        Position = UDim2.new(0, 20, 0, 45),
+        Size = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1
     })
     
-    -- Tab Scroll (horizontal)
-    local TabScroll = Create("ScrollingFrame", {
-        Name = "TabScroll",
-        Parent = TabArea,
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-        ScrollBarThickness = 0,
-        ScrollingDirection = "X",
-        AutomaticCanvasSize = "X"
-    })
-    
-    local TabLayout = Create("UIListLayout", {
-        Parent = TabScroll,
-        Padding = UDim.new(0, 5),
-        FillDirection = "Horizontal",
-        VerticalAlignment = "Center",
-        HorizontalAlignment = "Center"
-    })
-    
-    -- Content Container (chứa tab panels)
+    -- Content Container (ở giữa)
     local Content = Create("Frame", {
         Name = "Content",
         Parent = MainFrame,
-        Size = UDim2.new(1, -40, 1, -100),
-        Position = UDim2.new(0, 20, 0, 100),
+        Size = UDim2.new(0, 250, 0, 200),
+        Position = UDim2.new(0.5, -125, 0.5, -100),
         BackgroundTransparency = 1,
         ClipsDescendants = true
     })
@@ -257,6 +237,8 @@ function DClib:MakeWindow(config)
     -- Tab storage
     local tabButtons = {}
     local tabPanels = {}
+    local tabCount = 0
+    local circleRadius = 170 -- Bán kính vòng tròn tabs
     
     -- Return Window object
     local Window = {}
@@ -266,48 +248,81 @@ function DClib:MakeWindow(config)
         local tabName = config.Name or "Tab"
         local tabIcon = config.Icon or ""
         
-        -- Tab Button (BO TRÒN)
+        tabCount = tabCount + 1
+        
+        -- Tính vị trí theo vòng tròn (clockwise)
+        local angle = math.rad(90 + (tabCount - 1) * (360 / 8)) -- Bắt đầu từ top, đi theo kim đồng hồ
+        local centerX = 0.5
+        local centerY = 0.5
+        local offsetX = math.cos(angle) * circleRadius
+        local offsetY = -math.sin(angle) * circleRadius -- Y âm để đi lên
+        
+        local posX = centerX + (offsetX / 420)
+        local posY = centerY + (offsetY / 420)
+        
+        -- Tab Container (bao gồm cả nút X)
+        local TabContainerBtn = Create("Frame", {
+            Name = "TabContainer_" .. tabName,
+            Parent = TabContainer,
+            Size = UDim2.new(0, 80, 0, 35),
+            Position = UDim2.new(posX, -40, posY, -17),
+            BackgroundTransparency = 1,
+            ZIndex = 10
+        })
+        
+        -- Tab Button chính (lớn hơn)
         local TabBtn = Create("TextButton", {
-            Name = "TabBtn_" .. tabName,
-            Parent = TabScroll,
-            Size = UDim2.new(0, 65, 0, 28),
+            Name = "TabBtn",
+            Parent = TabContainerBtn,
+            Size = UDim2.new(1, -20, 1, 0),
             BackgroundColor3 = Color3.fromRGB(80, 50, 100),
             Text = "",
             AutoButtonColor = true,
-            BorderSizePixel = 0
+            BorderSizePixel = 0,
+            ZIndex = 11
         })
         
         -- Bo tròn tab button
         MakeCorner(TabBtn, 8)
         
-        -- Tab icon (nếu có)
-        if tabIcon ~= "" then
-            local Icon = Create("ImageLabel", {
-                Name = "TabIcon",
-                Parent = TabBtn,
-                Size = UDim2.new(0, 14, 0, 14),
-                Position = UDim2.new(0.5, -7, 0.5, -7),
-                BackgroundTransparency = 1,
-                Image = tabIcon,
-                ImageColor3 = DClib.Themes[DClib.Theme].Text
-            })
-        end
-        
-        -- Tab Label
+        -- Tab Label (tên tab)
         local TabLabel = Create("TextLabel", {
             Name = "TabLabel",
             Parent = TabBtn,
-            Size = UDim2.new(1, 0, 0, 12),
-            Position = UDim2.new(0, 0, 1, -12),
+            Size = UDim2.new(1, -10, 1, 0),
+            Position = UDim2.new(0, 5, 0, 0),
             BackgroundTransparency = 1,
             Text = tabName,
             TextColor3 = DClib.Themes[DClib.Theme].Text,
-            TextSize = 10,
+            TextSize = 11,
             Font = Enum.Font.GothamBold,
-            TextXAlignment = "Center"
+            TextXAlignment = "Center",
+            TextYAlignment = "Center",
+            ZIndex = 12
         })
         
-        -- Hover effects
+        -- Nút X để đóng tab
+        local CloseTabBtn = Create("ImageButton", {
+            Name = "CloseTabBtn",
+            Parent = TabContainerBtn,
+            Size = UDim2.new(0, 16, 0, 16),
+            Position = UDim2.new(1, -18, 0.5, -8),
+            BackgroundTransparency = 1,
+            Image = "rbxassetid://10747384394",
+            ImageColor3 = Color3.fromRGB(200, 100, 100),
+            ZIndex = 13
+        })
+        
+        -- Hover effect cho nút X
+        CloseTabBtn.MouseEnter:Connect(function()
+            CloseTabBtn.ImageColor3 = Color3.fromRGB(255, 50, 50)
+        end)
+        
+        CloseTabBtn.MouseLeave:Connect(function()
+            CloseTabBtn.ImageColor3 = Color3.fromRGB(200, 100, 100)
+        end)
+        
+        -- Hover effects cho tab
         TabBtn.MouseEnter:Connect(function()
             QuickTween(TabBtn, {BackgroundColor3 = DClib.Themes[DClib.Theme].Accent})
         end)
@@ -316,43 +331,59 @@ function DClib:MakeWindow(config)
             QuickTween(TabBtn, {BackgroundColor3 = Color3.fromRGB(80, 50, 100)})
         end)
         
-        -- Tab Content Panel (BO TRÒN)
+        -- Click vào nút X để đóng tab
+        CloseTabBtn.MouseButton1Click:Connect(function()
+            -- Ẩn panel
+            Panel.Visible = false
+            
+            -- Nếu panel đang active, chuyển sang tab khác
+            if Panel.Visible == false and tabCount == #tabPanels then
+                for i = #tabPanels - 1, 1, -1 do
+                    if tabPanels[i] and tabButtons[i] then
+                        tabPanels[i].Visible = true
+                        break
+                    end
+                end
+            end
+        end)
+        
+        -- Tab Content Panel (ở giữa)
         local Panel = Create("Frame", {
             Name = "Panel_" .. tabName,
             Parent = Content,
             Size = UDim2.new(1, 0, 1, 0),
-            Visible = false,
+            Visible = tabCount == 1, -- Tab đầu tiên hiện mặc định
             BackgroundColor3 = DClib.Themes[DClib.Theme].BackgroundSolid,
             ClipsDescendants = true
         })
         
-        MakeCorner(Panel, 8)
+        MakeCorner(Panel, 12)
         MakeStroke(Panel, DClib.Themes[DClib.Theme].Stroke, 1)
         
         -- Panel Scroll
         local PanelScroll = Create("ScrollingFrame", {
             Name = "PanelScroll",
             Parent = Panel,
-            Size = UDim2.new(1, -4, 1, -4),
-            Position = UDim2.new(0, 2, 0, 2),
+            Size = UDim2.new(1, -6, 1, -6),
+            Position = UDim2.new(0, 3, 0, 3),
             BackgroundTransparency = 1,
-            ScrollBarThickness = 4,
+            ScrollBarThickness = 3,
             ScrollBarImageColor3 = DClib.Themes[DClib.Theme].Accent,
             AutomaticCanvasSize = "Y"
         })
         
         local PanelLayout = Create("UIListLayout", {
             Parent = PanelScroll,
-            Padding = UDim.new(0, 8),
+            Padding = UDim.new(0, 6),
             SortOrder = "LayoutOrder"
         })
         
         local PanelPadding = Create("UIPadding", {
             Parent = PanelScroll,
-            PaddingLeft = UDim.new(0, 8),
-            PaddingRight = UDim.new(0, 8),
-            PaddingTop = UDim.new(0, 8),
-            PaddingBottom = UDim.new(0, 8)
+            PaddingLeft = UDim.new(0, 6),
+            PaddingRight = UDim.new(0, 6),
+            PaddingTop = UDim.new(0, 6),
+            PaddingBottom = UDim.new(0, 6)
         })
         
         -- Lưu tab
