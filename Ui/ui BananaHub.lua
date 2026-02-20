@@ -170,7 +170,7 @@ ImageLabel.Size = UDim2.new(0, 40, 0, 40)
 ImageLabel.BackgroundTransparency = 1
 ImageLabel.BorderSizePixel = 0
 ImageLabel.ImageColor3 = Color3.fromRGB(255, 255, 255)
-ImageLabel.Image = "rbxassetid://105245380363493"
+ImageLabel.Image = "rbxassetid://72452149521939"
 
 local isToggled = getgenv().UIToggled or false
 local isHovering = false
